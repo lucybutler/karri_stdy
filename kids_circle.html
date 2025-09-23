@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Karri Study</title>
+    <meta charset="utf-8" />
+
+    <!-- jsPsych 6.1.0 core + plugins -->
+  <script src="jspsych-6.1.0/jspsych.js"></script>
+  <!-- Load the preload plugin from CDN (local file was missing) -->
+  <script src="https://unpkg.com/@jspsych/plugin-preload@1.1.3"></script>
+    <script src="jspsych-6.1.0/plugins/jspsych-html-keyboard-response.js"></script>
+    <script src="jspsych-6.1.0/plugins/jspsych-html-button-response.js"></script>
+    <link rel="stylesheet" href="jspsych-6.1.0/css/jspsych.css">
+
+    <style>
+  :root { --size: 820px; --white-margin: 40px; --red-diameter: calc(var(--size) - var(--white-margin)); --band: calc(var(--red-diameter) / 6); --orange-band: var(--band); --green-band: var(--band); }
+    html, body { background:#fff; color:#000; margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+      #jspsych-target { display:grid; place-items:center; min-height:100vh; }
+
+      .wrap { display:flex; gap:24px; align-items:flex-start; padding:16px; }
+      /* Circular board */
+      .board { position:relative; width:var(--size); height:var(--size); background:#fff; border-radius:50%; display:grid; place-items:center; overflow:hidden; }
+  .ring { position:absolute; border-radius:50%; left:50%; top:50%; transform:translate(-50%,-50%); }
+  .ring.red    { background:#b11a1a; width:var(--red-diameter); height:var(--red-diameter); }
+  .ring.orange { background:#de6b1f; width:calc(var(--red-diameter) - (2 * var(--orange-band))); height:calc(var(--red-diameter) - (2 * var(--orange-band))); }
+  .ring.green  { background:#2e8b2e; width:calc(var(--red-diameter) - (2 * var(--orange-band)) - (2 * var(--green-band))); height:calc(var(--red-diameter) - (2 * var(--orange-band)) - (2 * var(--green-band))); }
+  .center { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:calc(var(--red-diameter) - (6 * var(--band))); height:calc(var(--red-diameter) - (6 * var(--band))); border-radius:50%; background:var(--board-bg, #fff); }
+
+      .start-strip { width:220px; }
+      .start-strip h3 { margin:.2rem 0 .6rem; font-weight:600; }
+  .tiles { display:flex; flex-wrap:wrap; gap:8px; max-height:calc(var(--size) - 20px); overflow:auto; }
+  .tile { width:74px; height:74px; border-radius:12px; background:transparent; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; }
+  .tile { cursor:grab; touch-action:none; }
+  .tile img { width:100%; height:100%; object-fit:contain; border-radius:10px; pointer-events:none; border:0; outline:0; }
+  .ring { pointer-events:none; }
+  .ring.active { filter: brightness(1.25); box-shadow: 0 0 18px rgba(0,0,0,0.25) inset; }
+
+      .legend { font-size:.9rem; opacity:.85; line-height:1.4; margin-top:.75rem; }
+      .legend div { margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+      .swatch { width:16px; height:16px; border-radius:50%; display:inline-block; }
+
+      /* Draggables that live on the board */
+  .item { position:absolute; width:74px; height:74px; border-radius:12px; background:transparent; border:1px solid #999; color:#000; display:flex; align-items:center; justify-content:center; cursor:grab; user-select:none; }
+      .item.dragging { opacity:.85; cursor:grabbing; }
+  .item img { width:100%; height:100%; object-fit:contain; border-radius:10px; border:0; outline:0; }
+
+  /* tooltip bubble */
+  .kc-tooltip { position:fixed; pointer-events:none; background:rgba(0,0,0,0.85); color:#fff; padding:6px 8px; border-radius:6px; font-size:13px; z-index:100000; transform:translate(8px,8px); }
+
+      /* Make the default jsPsych button readable on dark bg */
+  .jspsych-btn { background:#e0e0e0; color:#000; border-radius:8px; }
+  .jspsych-content { color:#000; }
+    </style>
+  </head>
+  <body>
+    <div id="jspsych-target"></div>
+
+    <script>
+      // ======= GLOBALS / CONFIG =======
+      var timeline = [];
+
+    // Your images (folder: img/)
+    var ITEMS = [
+      { id:'kangaroo',   label:'kangaroo',   img:'img/kangaroo.png' },
+      { id:'city',       label:'city',       img:'img/city.png' },
+      { id:'family',     label:'family',     img:'img/family.png' },
+      { id:'forest',     label:'forest',     img:'img/forest.png' },
+      { id:'friends',    label:'friends',    img:'img/friends.png' },
+      { id:'giraffe',    label:'giraffe',    img:'img/giraffe.png' },
+      { id:'karak',      label:'karak',      img:'img/karak.png' },
+      { id:'park',       label:'park',       img:'img/park.png' },
+      { id:'pets',       label:'pets',       img:'img/pets.png' },
+      { id:'quenda',     label:'quenda',     img:'img/quenda.png' },
+      { id:'shoes',      label:'shoes',      img:'img/shoes.png' },
+      { id:'table',      label:'table',      img:'img/table.png' },
+      { id:'tiger',      label:'tiger',      img:'img/tiger.png' },
+      { id:'tree',       label:'tree',       img:'img/tree.png' },
+      { id:'woodpecker', label:'woodpecker', img:'img/woodpecker.png' }
+    ];
+
+    // Must mirror CSS custom properties
+  var BOARD_SIZE   = 820;  // px (diameter)
+    var WHITE_MARGIN = 40;   // outer white band width (px)
+    // per-item scores (initialized to 0)
+    var SCORES = {};
+    ITEMS.forEach(function(it){ SCORES[it.id] = 0; });
+    // also expose per-item globals like `petsScore`, `shoesScore`, etc.
+    ITEMS.forEach(function(it){
+      try { window[it.id + 'Score'] = 0; } catch (e) { /* ignore non-browser env */ }
+    });
+
+    function setItemScore(itemId, score) {
+      if (!(itemId in SCORES)) SCORES[itemId] = 0;
+      SCORES[itemId] = score;
+      // update the named global variable as well (e.g. petsScore)
+      try { window[itemId + 'Score'] = score; } catch (e) { /* ignore */ }
+    }
+
+    function getItemScore(itemId) {
+      return (itemId in SCORES) ? SCORES[itemId] : 0;
+    }
+    // Read ring thickness from CSS variables so detection matches visuals
+    function cssPxVar(name, fallback) {
+      var val = getComputedStyle(document.documentElement).getPropertyValue(name);
+      if (!val) return fallback;
+      return parseFloat(val);
+    }
+  // Read band widths (these are radial band thicknesses in px)
+  var ORANGE_BAND = cssPxVar('--orange-band', 120);
+  var GREEN_BAND  = cssPxVar('--green-band', 24);
+  // compute detection radii dynamically from the actual ring elements so visuals and hit detection match
+  function computeRadii(boardEl) {
+    boardEl = boardEl || document.getElementById('board');
+    var red = boardEl.querySelector('.ring.red');
+    var orange = boardEl.querySelector('.ring.orange');
+    var green = boardEl.querySelector('.ring.green');
+    if (red && orange && green) {
+      var rRed = red.getBoundingClientRect().width / 2;
+      var rOrange = orange.getBoundingClientRect().width / 2;
+      var rGreen = green.getBoundingClientRect().width / 2;
+      return { rRed: rRed, rOrange: rOrange, rGreen: rGreen };
+    }
+    // fallback to CSS-vars/math
+    var redDiameter = cssPxVar('--red-diameter', BOARD_SIZE - WHITE_MARGIN);
+    var band = cssPxVar('--band', (redDiameter/6));
+    var rRed = redDiameter / 2;
+    var rOrange = rRed - band;
+    var rGreen  = rOrange - band;
+    return { rRed: rRed, rOrange: rOrange, rGreen: rGreen };
+  }
+
+    // ======= HELPERS =======
+    function showError(msg) {
+      try {
+        var target = document.getElementById('jspsych-target') || document.body;
+        var box = document.getElementById('kc-error-box');
+        if (!box) {
+          box = document.createElement('div');
+          box.id = 'kc-error-box';
+          box.style.position = 'fixed';
+          box.style.left = '12px';
+          box.style.right = '12px';
+          box.style.top = '12px';
+          box.style.background = '#ffecec';
+          box.style.border = '1px solid #ffb5b5';
+          box.style.padding = '10px';
+          box.style.zIndex = 99999;
+          box.style.maxHeight = '40vh';
+          box.style.overflow = 'auto';
+          target.appendChild(box);
+        }
+        var p = document.createElement('pre'); p.style.margin = '0'; p.textContent = msg;
+        box.appendChild(p);
+      } catch (e) { console.error('showError failed', e); }
+    }
+
+    // global error handler to surface exceptions during the experiment
+    window.addEventListener('error', function(ev){
+      console.error('Global error', ev.error || ev.message, ev);
+      try { showError('Error: ' + (ev.error && ev.error.message ? ev.error.message : ev.message)); } catch(e){}
+    });
+    function boardHTML () {
+      return '' +
+        '<div class="wrap">' +
+          '<div class="board" id="board" style="width:'+BOARD_SIZE+'px;height:'+BOARD_SIZE+'px;">' +
+            '<div class="ring red"></div>' +
+            '<div class="ring orange"></div>' +
+            '<div class="ring green"></div>' +
+            '<div class="center"></div>' +
+          '</div>' +
+          '<div class="start-strip">' +
+            '<h3>Drag items into a circle</h3>' +
+            '<div class="tiles" id="startTiles"></div>' +
+            '<div class="legend">' +
+              '</div>' +
+          '</div>' +
+        '</div>';
+    }
+
+    function placeStartTiles () {
+      var tiles = document.getElementById('startTiles');
+      var board = document.getElementById('board');
+      ITEMS.forEach(function (it) {
+        var t = document.createElement('div');
+        t.className = 'tile';
+        t.id = 'tile-' + it.id;
+        t.setAttribute('data-id', it.id);
+        if (it.img) {
+          var im = document.createElement('img');
+          im.src = it.img; im.alt = it.label;
+          im.draggable = false;
+          t.appendChild(im);
+        } else {
+          t.textContent = it.label;
+        }
+  tiles.appendChild(t);
+  // make the tile draggable; when dragging starts it will be moved into the board
+  // ensure pointer events are enabled
+  t.style.touchAction = 'none';
+  enableDrag(t, board);
+  attachTooltip(t, it.label);
+      });
+    }
+
+    // tooltip element (singleton)
+    var kc_tooltip = null;
+    function ensureTooltip(){
+      if (kc_tooltip) return kc_tooltip;
+      kc_tooltip = document.createElement('div'); kc_tooltip.className = 'kc-tooltip'; kc_tooltip.style.display = 'none'; document.body.appendChild(kc_tooltip);
+      return kc_tooltip;
+    }
+    function showTooltip(text, x, y){
+      var t = ensureTooltip(); t.textContent = text; t.style.left = (x+8) + 'px'; t.style.top = (y+8) + 'px'; t.style.display = 'block';
+    }
+    function moveTooltip(x,y){ if (!kc_tooltip) return; kc_tooltip.style.left = (x+8) + 'px'; kc_tooltip.style.top = (y+8) + 'px'; }
+    function hideTooltip(){ if (!kc_tooltip) return; kc_tooltip.style.display = 'none'; }
+
+    function attachTooltip(el, text){
+      el.addEventListener('pointerenter', function(e){ try { showTooltip(text, e.clientX, e.clientY); } catch(ex){} });
+      el.addEventListener('pointermove', function(e){ try { moveTooltip(e.clientX, e.clientY); } catch(ex){} });
+      el.addEventListener('pointerleave', function(e){ try { hideTooltip(); } catch(ex){} });
+    }
+
+    // placeDraggables removed: start tiles are the draggable elements now
+
+    function enableDrag (el, board) {
+      var ox=0, oy=0, dragging=false;
+      var original = {};
+      var dragEl = null; // the element that will follow the pointer (we use the original)
+
+      function clearRingHighlights() {
+        var rings = board.querySelectorAll('.ring');
+        rings.forEach(function(r){ r.classList.remove('active'); });
+      }
+
+      function down (e) {
+        var p = e.touches ? e.touches[0] : e;
+        dragging = true; el.classList.add('dragging');
+        e.preventDefault();
+
+        clearRingHighlights();
+
+        // save original position so we can restore if dropped outside
+        original.parent = el.parentElement;
+        original.next = el.nextSibling;
+        original.id = el.id;
+
+        var elRect = el.getBoundingClientRect();
+        ox = p.clientX - elRect.left; oy = p.clientY - elRect.top;
+
+        // move the ORIGINAL into the document body and make it fixed-position so it follows the pointer
+        try {
+          // size it to keep visual layout stable
+          el.style.width = elRect.width + 'px';
+          el.style.height = elRect.height + 'px';
+          el.style.position = 'fixed';
+          el.style.left = (p.clientX - ox) + 'px';
+          el.style.top = (p.clientY - oy) + 'px';
+          el.style.zIndex = 99999;
+          el.style.pointerEvents = 'none';
+          // ensure it's not inside the start strip anymore
+          if (original.parent && original.parent.contains(el)) original.parent.removeChild(el);
+          document.body.appendChild(el);
+          dragEl = el;
+        } catch (err) { console.error('move-on-pickup failed', err); }
+
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', up, { once:true });
+      }
+
+      function move (e) {
+        if (!dragging || !dragEl) return;
+        var p = e.touches ? e.touches[0] : e;
+        dragEl.style.left = (p.clientX - ox) + 'px';
+        dragEl.style.top  = (p.clientY - oy) + 'px';
+
+        // hover highlight: compute clone center and highlight the ring under it
+        var boardRect = board.getBoundingClientRect();
+        var elRect = dragEl.getBoundingClientRect();
+        var centerX = elRect.left + elRect.width/2;
+        var centerY = elRect.top + elRect.height/2;
+        var cx = boardRect.left + boardRect.width/2;
+        var cy = boardRect.top + boardRect.height/2;
+        var dx = centerX - cx, dy = centerY - cy;
+        var dist = Math.sqrt(dx*dx + dy*dy);
+
+        var radii = computeRadii(board);
+        clearRingHighlights();
+        if (dist <= radii.rGreen)  { var ring = board.querySelector('.ring.green'); if (ring) ring.classList.add('active'); }
+        else if (dist <= radii.rOrange) { var ring = board.querySelector('.ring.orange'); if (ring) ring.classList.add('active'); }
+        else if (dist <= radii.rRed) { var ring = board.querySelector('.ring.red'); if (ring) ring.classList.add('active'); }
+      }
+
+      function up (e) {
+        dragging = false;
+        window.removeEventListener('pointermove', move);
+
+        if (!dragEl) return;
+        var p = e.changedTouches ? e.changedTouches[0] : e;
+        var boardRect = board.getBoundingClientRect();
+
+        // Use the center of the dragged element for ring detection
+        var elRect = dragEl.getBoundingClientRect();
+        var centerX = elRect.left + elRect.width/2;
+        var centerY = elRect.top + elRect.height/2;
+        var cx = boardRect.left + boardRect.width/2;
+        var cy = boardRect.top + boardRect.height/2;
+        var dx = centerX - cx, dy = centerY - cy;
+        var dist = Math.sqrt(dx*dx + dy*dy);
+
+        var radii = computeRadii(board);
+        var droppedIn = false; var which = null;
+        if (dist <= radii.rGreen)  { droppedIn = true; which = 'green'; }
+        else if (dist <= radii.rOrange) { droppedIn = true; which = 'orange'; }
+        else if (dist <= radii.rRed) { droppedIn = true; which = 'red'; }
+
+        var dataId = el.getAttribute('data-id') || original.id.replace(/^tile-/, '');
+
+        if (droppedIn) {
+          // convert dragged element into a board item (absolute within board)
+          var left = elRect.left - boardRect.left;
+          var top  = elRect.top  - boardRect.top;
+          el.classList.add('item');
+          el.style.position = 'absolute';
+          el.style.left = left + 'px';
+          el.style.top  = top  + 'px';
+          el.style.zIndex = '';
+          el.style.pointerEvents = '';
+          el.id = 'item-' + dataId;
+          el.setAttribute('data-id', dataId);
+          el.style.background = 'transparent';
+          board.appendChild(el);
+          // attach tooltip to placed item
+          try { var label = (ITEMS.find(function(x){ return x.id===dataId; }) || {}).label || dataId; attachTooltip(el, label); } catch(e){}
+          // set score for this item
+          var scoreVal = (which === 'green') ? 1 : (which === 'orange') ? 2 : 3;
+          setItemScore(dataId, scoreVal);
+          clearRingHighlights();
+          var ring = board.querySelector('.ring.' + which);
+          if (ring) ring.classList.add('active');
+        } else {
+          // restore to original container (start strip)
+          try {
+            el.classList.remove('item');
+            el.style.position = '';
+            el.style.left = '';
+            el.style.top = '';
+            el.style.width = '';
+            el.style.height = '';
+            el.style.pointerEvents = '';
+            if (original.parent) {
+              if (original.next && original.next.parentNode === original.parent) original.parent.insertBefore(el, original.next);
+              else original.parent.appendChild(el);
+            }
+          } catch (err) { console.error('restore failed', err); }
+          // clear score
+          setItemScore(dataId, 0);
+        }
+
+        // cleanup
+        dragEl.classList.remove('dragging');
+        dragEl = null;
+      }
+
+      el.addEventListener('pointerdown', down);
+    }
+
+    function scoreFor (el, board) {
+      var b = board.getBoundingClientRect();
+      var cx = b.left + b.width/2, cy = b.top + b.height/2;
+
+  var radii = computeRadii(board);
+
+      var r = el.getBoundingClientRect();
+      var ix = r.left + r.width/2, iy = r.top + r.height/2;
+      var dx = ix - cx, dy = iy - cy;
+      var dist = Math.sqrt(dx*dx + dy*dy);
+
+      if (dist <= radii.rGreen)  return 1;   // green
+      if (dist <= radii.rOrange) return 2;   // orange
+      if (dist <= radii.rRed)    return 3;   // red
+      return 0;                        // white
+    }
+
+    function collectPlacements () {
+      var board = document.getElementById('board');
+      var out = [];
+      // If board is not present (jsPsych may have cleared DOM), fall back to SCORES and element rects
+      if (!board) {
+        ITEMS.forEach(function (it) {
+          var el = document.getElementById('item-' + it.id);
+          var score = (it.id in SCORES) ? SCORES[it.id] : (window[it.id + 'Score'] || 0);
+          if (!el) {
+            out.push({ id: it.id, label: it.label, x: -1, y: -1, score: score });
+            return;
+          }
+          var r = el.getBoundingClientRect();
+          out.push({ id: it.id, label: it.label, x: Math.round(r.left), y: Math.round(r.top), score: score });
+        });
+        return out;
+      }
+
+      var b = board.getBoundingClientRect();
+      ITEMS.forEach(function (it) {
+        var el = document.getElementById('item-' + it.id);
+        if (!el) {
+          // item not moved onto board -> treat as outside
+          out.push({ id: it.id, label: it.label, x: -1, y: -1, score: 0 });
+          return;
+        }
+        var s = scoreFor(el, board);
+        var r = el.getBoundingClientRect();
+        out.push({ id: it.id, label: it.label, x: Math.round(r.left - b.left), y: Math.round(r.top - b.top), score: s });
+      });
+      return out;
+    }
+
+    // Preloading removed for local testing (was showing an unreliable loading page)
+
+    // ======= INSTRUCTIONS =======
+    var instructions = {
+      type: 'html-button-response',
+      stimulus:
+        '<div style="max-width:820px">' +
+          '<h2>Drag items into the circles</h2>' +
+          '</ul>' +
+          '<p>When you’re done, click Continue.</p>' +
+        '</div>',
+      choices: ['Continue']
+    };
+    timeline.push(instructions);
+
+    // ======= DRAG-AND-DROP TRIAL =======
+    var place_items_trial = {
+      type: 'html-button-response',
+      stimulus: function () { return boardHTML(); },
+      choices: ['Continue'],
+  on_load: function () { try { console.log('place_items_trial on_load'); placeStartTiles();
+          // disable Continue until all items are placed
+          window.kc_monitor_interval = window.kc_monitor_interval || setInterval(function(){
+            try {
+              var btn = document.querySelector('#jspsych-target .jspsych-btn');
+              var placed = document.querySelectorAll('#board .item').length;
+              if (btn) {
+                if (placed >= ITEMS.length) { btn.disabled = false; btn.classList.remove('disabled'); }
+                else { btn.disabled = true; btn.classList.add('disabled'); }
+              }
+            } catch (e) { /* ignore */ }
+          }, 200);
+          // also disable immediately in case button is present now
+          try { var _b = document.querySelector('#jspsych-target .jspsych-btn'); if (_b) { _b.disabled = true; _b.classList.add('disabled'); } } catch(e){}
+        } catch (e) { console.error('Error in place_items_trial on_load', e); try { showError('place_items_trial on_load error: '+ e.message); } catch (ee){} } },
+      on_finish: function (data) {
+        try {
+          console.log('Placement trial on_finish starting');
+            var placements = jsPsych.data.get().filter({trial_type: 'place_items'}).values();
+            var placement = placements && placements.length ? placements[placements.length-1] : null;
+            // copyable block only
+            var vars = [];
+            ITEMS.forEach(function(it){ var val = (placement && placement.scores && (it.id in placement.scores)) ? placement.scores[it.id] : (SCORES[it.id]||0); vars.push(it.id + ': ' + val); });
+            data.scores = {};
+            var total = 0;
+            vars.forEach(function(line) {
+              var parts = line.split(': ');
+              var id = parts[0];
+              var score = parseInt(parts[1], 10);
+              data.scores[id] = score;
+              total += score;
+            });
+            data.total_score = total;
+            console.log('Placement trial on_finish done', data);
+        } catch (e) {
+          console.error('Error in placement on_finish', e);
+          try { showError('Placement on_finish error: ' + e.message); } catch (ee){}
+        } finally {
+          try { if (window.kc_monitor_interval) { clearInterval(window.kc_monitor_interval); window.kc_monitor_interval = null; } } catch(e){}
+        }
+      }
+    };
+    timeline.push(place_items_trial);
+
+    // ======= FEEDBACK / SUBMIT =======
+    var feedback = {
+      type: 'html-button-response',
+      stimulus: function () {
+        // Prefer using the internal SCORES map so feedback renders even if jsPsych data is absent
+        var rows = ITEMS.map(function(it){
+          var s = (it.id in SCORES) ? SCORES[it.id] : (window[it.id + 'Score'] || 0);
+          return '<tr><td>'+it.label+'</td><td style="text-align:center">'+(s||0)+'</td></tr>';
+        }).join('');
+
+        var varLines = ITEMS.map(function(it){
+          var s = (it.id in SCORES) ? SCORES[it.id] : (window[it.id + 'Score'] || 0);
+          return it.id + 'Score: ' + (s || 0);
+        }).join('\n');
+
+        var total = ITEMS.reduce(function(acc,it){
+          var s = (it.id in SCORES) ? SCORES[it.id] : (window[it.id + 'Score'] || 0);
+          return acc + (s||0);
+        }, 0);
+
+        return '' +
+          '<div style="max-width:820px">' +
+            '<h2>Thanks!</h2>' +
+            '<p>Here are your scores (Green=1, Orange=2, Red=3, Outside=0).</p>' +
+            '<h3>Copyable variables</h3>' +
+            '<pre id="kc_copyvars" style="background:#f6f6f6;border:1px solid #ddd;padding:12px">'+varLines+'</pre>' +
+          '</div>';
+      },
+      choices: ['Finish'],
+      on_finish: function () {
+        // Post scores to parent (for embedding in Qualtrics) and submit to JATOS if available
+        try {
+          var payload = { type: 'kc_scores', scores: {}, total: 0 };
+          ITEMS.forEach(function(it){ var s = (it.id in SCORES) ? SCORES[it.id] : (window[it.id + 'Score'] || 0); payload.scores[it.id] = s; payload.total += (s||0); });
+          try {
+            if (window.parent && window.parent !== window) {
+              window.parent.postMessage(payload, '*');
+              console.log('Posted kc_scores to parent', payload);
+            }
+          } catch (pe) { console.error('postMessage to parent failed', pe); }
+
+          var all = jsPsych.data.get().values();
+          if (window.jatos && jatos.submitResultData) {
+            jatos.submitResultData(all, jatos.endStudy);
+          }
+        } catch (e) { console.error('feedback on_finish error', e); }
+      }
+    };
+    timeline.push(feedback);
+
+    // ======= INIT =======
+    try {
+      jsPsych.init({
+        display_element: 'jspsych-target',
+        timeline: timeline,
+        default_iti: 0,
+        auto_preload: false
+      });
+    } catch (e) {
+      console.error('jsPsych.init error', e);
+      try { showError('jsPsych.init error: ' + e.message); } catch (ee){}
+    }
+    </script>
+  </body>
+</html>
