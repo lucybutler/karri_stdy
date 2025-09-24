@@ -15,4 +15,3 @@ try { git commit -m "Initial commit: karri study experiment" } catch { Write-Hos
 git branch -M main
 try { git remote add origin $RemoteUrl } catch { Write-Host "Remote may already exist; setting url"; git remote set-url origin $RemoteUrl }
 git push -u origin main
-Write-Host "If push succeeded, enable GitHub Pages in repository settings and visit: https://<youruser>.github.io/karri_study/kids_circle.html";

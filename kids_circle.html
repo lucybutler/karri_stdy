@@ -40,7 +40,7 @@
       .swatch { width:16px; height:16px; border-radius:50%; display:inline-block; }
 
       /* Draggables that live on the board */
-  .item { position:absolute; width:74px; height:74px; border-radius:12px; background:transparent; display:flex; align-items:center; justify-content:center; cursor:grab; user-select:none; }
+  .item { position:absolute; width:74px; height:74px; border-radius:12px; background:transparent; color:#000; display:flex; align-items:center; justify-content:center; cursor:grab; user-select:none; }
       .item.dragging { opacity:.85; cursor:grabbing; }
   .item img { width:100%; height:100%; object-fit:contain; border-radius:10px; border:0; outline:0; }
 
@@ -246,10 +246,10 @@
 
         clearRingHighlights();
 
-  // save original placeholder so we can restore if dropped outside
-  original.placeholder = document.getElementById('ph-' + (el.getAttribute('data-id') || el.id.replace(/^tile-/, '')));
-  original.parent = original.placeholder;
-  original.id = el.id;
+        // save original placeholder so we can restore if dropped outside
+        original.placeholder = document.getElementById('ph-' + (el.getAttribute('data-id') || el.id.replace(/^tile-/, '')));
+        original.parent = original.placeholder;
+        original.id = el.id;
 
         var elRect = el.getBoundingClientRect();
         ox = p.clientX - elRect.left; oy = p.clientY - elRect.top;
@@ -264,6 +264,7 @@
           el.style.top = (p.clientY - oy) + 'px';
           el.style.zIndex = 99999;
           el.style.pointerEvents = 'none';
+          // ensure it's not inside the start strip anymore
           // detach from placeholder and move to body so it can follow pointer
           try { if (original.parent && original.parent.contains(el)) original.parent.removeChild(el); } catch(e){}
           document.body.appendChild(el);
@@ -507,7 +508,7 @@
         return '' +
           '<div style="max-width:820px">' +
             '<h2>Thanks!</h2>' +
-            '<p>Here are your scores (Green=1, Orange=2, Red=3).</p>' +
+            '<p>Here are your scores (Green=1, Orange=2, Red=3, Outside=0).</p>' +
             '<h3>Copyable variables</h3>' +
             '<pre id="kc_copyvars" style="background:#f6f6f6;border:1px solid #ddd;padding:12px">'+varLines+'</pre>' +
           '</div>';
@@ -520,6 +521,7 @@
           ITEMS.forEach(function(it){
             var s = (it.id in SCORES) ? SCORES[it.id] : (window[it.id + 'Score'] || 0);
             payload.scores[it.id] = s;
+            // also include a flattened embedded-data map so parent can directly set Qualtrics fields
             payload.embedded[it.id + 'Score'] = s;
             payload.total += (s||0);
           });
