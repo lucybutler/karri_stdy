@@ -524,9 +524,14 @@
             payload.total += (s||0);
           });
           try {
+            // Post to parent; prefer restricting origin for security.
+            var PARENT_ORIGIN = window.PARENT_ORIGIN || '*';
+            if (PARENT_ORIGIN === '*') {
+              console.warn('PARENT_ORIGIN is not set; using "*" for postMessage. Set window.PARENT_ORIGIN in the parent to restrict origin.');
+            }
             if (window.parent && window.parent !== window) {
-              window.parent.postMessage(payload, '*');
-              console.log('Posted kc_scores to parent', payload);
+              window.parent.postMessage(payload, PARENT_ORIGIN);
+              console.log('Posted kc_scores to parent', payload, 'targetOrigin:', PARENT_ORIGIN);
             }
           } catch (pe) { console.error('postMessage to parent failed', pe); }
 

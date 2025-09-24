@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Parent test for index.html</title>
+    <style>body{font-family:system-ui,Segoe UI,Arial;padding:18px} iframe{border:1px solid #ddd}</style>
+  </head>
+  <body>
+    <h2>Parent test page — listening for kc_scores</h2>
+    <p>Loads <code>index.html</code> in an iframe and displays received payloads below.</p>
+
+    <iframe id="frame" src="http://localhost:8000/index.html" width="100%" height="900"></iframe>
+
+    <h3>Last received message</h3>
+    <pre id="out" style="white-space:pre-wrap;border:1px solid #ccc;padding:12px;margin-top:12px;">(none)</pre>
+
+    <script>
+      window.addEventListener('message', function(ev){
+        try {
+          var out = document.getElementById('out');
+          out.textContent = 'Received message origin: ' + ev.origin + '\n' + JSON.stringify(ev.data, null, 2);
+          // Demonstrate setting a global PARENT_ORIGIN so the iframe can restrict its postMessage
+          window.PARENT_ORIGIN = ev.origin; // optional: set this before sending a response back
+          console.log('Set window.PARENT_ORIGIN to', window.PARENT_ORIGIN);
+        } catch(e) { console.error(e); }
+      }, false);
+    </script>
+  </body>
+</html>
