@@ -29,7 +29,7 @@
       .start-strip { width:220px; }
       .start-strip h3 { margin:.2rem 0 .6rem; font-weight:600; }
   .tiles { display:flex; flex-wrap:wrap; gap:8px; max-height:calc(var(--size) - 20px); overflow:auto; }
-  .tile { width:74px; height:74px; border-radius:12px; background:transparent; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; }
+  .tile { width:74px; height:74px; border-radius:12px; background:transparent; display:flex; align-items:center; justify-content:center; }
   .tile { cursor:grab; touch-action:none; }
   .tile img { width:100%; height:100%; object-fit:contain; border-radius:10px; pointer-events:none; border:0; outline:0; }
   .ring { pointer-events:none; }
@@ -40,7 +40,7 @@
       .swatch { width:16px; height:16px; border-radius:50%; display:inline-block; }
 
       /* Draggables that live on the board */
-  .item { position:absolute; width:74px; height:74px; border-radius:12px; background:transparent; border:1px solid #999; color:#000; display:flex; align-items:center; justify-content:center; cursor:grab; user-select:none; }
+  .item { position:absolute; width:74px; height:74px; border-radius:12px; background:transparent; display:flex; align-items:center; justify-content:center; cursor:grab; user-select:none; }
       .item.dragging { opacity:.85; cursor:grabbing; }
   .item img { width:100%; height:100%; object-fit:contain; border-radius:10px; border:0; outline:0; }
 
