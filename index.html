@@ -54,6 +54,17 @@
     </style>
   </head>
   <body>
+    <!-- Configure remote collector: set these values after deploying your Apps Script web app -->
+    <script>
+      // Replace the endpoint below with your deployed Apps Script Web App URL (or other collector)
+      // Example: 'https://script.google.com/macros/s/AKfycbx.../exec'
+      window.KC_REMOTE_ENDPOINT = window.KC_REMOTE_ENDPOINT || 'https://script.google.com/macros/s/AKfycbwtw-3rWyFZAmumETLhpONjEq8UptiE2WYXQKhUBSMDt9r6YmrCQ7FHatpPGGBOieGB/exec';
+
+      // Replace with the shared secret you set in the Apps Script EXPECTED_SECRET.
+      // WARNING: putting the secret here makes it public in the site source. Use only as a light anti-spam.
+      window.KC_REMOTE_SECRET = window.KC_REMOTE_SECRET || 'TESTER';
+    </script>
+
     <div id="jspsych-target"></div>
 
     <script>
@@ -417,8 +428,199 @@
       return out;
     }
 
+    // Export scores and metadata to CSV and trigger a download
+    // Modal preview helper (singleton)
+    var kc_csv_modal = null;
+    function ensureCsvModal() {
+      if (kc_csv_modal) return kc_csv_modal;
+      var modal = document.createElement('div');
+      modal.id = 'kc-csv-modal';
+  modal.style.position = 'fixed';
+  modal.style.left = '0'; modal.style.top = '0'; modal.style.right = '0'; modal.style.bottom = '0';
+  // start hidden; showCsvPreview will set display to 'flex' when needed
+  modal.style.display = 'none'; modal.style.alignItems = 'center'; modal.style.justifyContent = 'center';
+      modal.style.background = 'rgba(0,0,0,0.45)'; modal.style.zIndex = 200000;
+
+      var box = document.createElement('div');
+      box.style.background = '#fff'; box.style.color = '#000'; box.style.borderRadius = '8px'; box.style.padding = '16px'; box.style.maxWidth = '90%'; box.style.width = '760px'; box.style.maxHeight = '80%'; box.style.overflow = 'auto';
+
+      var h = document.createElement('h3'); h.textContent = 'CSV preview'; box.appendChild(h);
+      var pre = document.createElement('pre'); pre.id = 'kc-csv-preview'; pre.style.background = '#f6f6f6'; pre.style.padding = '10px'; pre.style.whiteSpace = 'pre-wrap'; pre.style.wordBreak = 'break-word'; pre.style.maxHeight = '60vh'; pre.style.overflow = 'auto'; box.appendChild(pre);
+
+      var btnRow = document.createElement('div'); btnRow.style.display = 'flex'; btnRow.style.gap = '8px'; btnRow.style.marginTop = '12px'; btnRow.style.justifyContent = 'flex-end';
+      var cancel = document.createElement('button'); cancel.textContent = 'Cancel'; cancel.className = 'jspsych-btn';
+      var confirm = document.createElement('button'); confirm.textContent = 'Download CSV'; confirm.className = 'jspsych-btn';
+      btnRow.appendChild(cancel); btnRow.appendChild(confirm); box.appendChild(btnRow);
+
+      modal.appendChild(box);
+      document.body.appendChild(modal);
+
+      // actions will be set by showCsvPreview (we keep references for cleanup)
+      kc_csv_modal = { modal: modal, pre: pre, cancel: cancel, confirm: confirm };
+      return kc_csv_modal;
+    }
+
+    // Show CSV preview and require confirmation before downloading.
+    // callback(downloaded:boolean) invoked after user action
+    function showCsvPreview(csvText, filename, callback) {
+      try {
+        var m = ensureCsvModal();
+        m.pre.textContent = csvText;
+        var onClose = function(downloaded){
+          try { m.modal.style.display = 'none'; } catch(_){}
+          if (callback) callback(downloaded);
+        };
+        // ensure visible
+        m.modal.style.display = 'flex';
+
+        // remove previous handlers
+        m.cancel.onclick = function(){ onClose(false); };
+        m.confirm.onclick = function(){
+          try {
+            // trigger download
+            var blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+          } catch (e) { console.error('download failed', e); }
+          onClose(true);
+        };
+      } catch (e) { console.error('showCsvPreview failed', e); if (callback) callback(false); }
+    }
+
+    function exportScoresToCSV(participantId, scoresObj, total) {
+      try {
+        // helper to CSV-escape a value
+        function esc(v) {
+          if (v === null || v === undefined) return '';
+          var s = String(v);
+          if (s.indexOf(',') !== -1 || s.indexOf('\n') !== -1 || s.indexOf('"') !== -1) {
+            return '"' + s.replace(/"/g, '""') + '"';
+          }
+          return s;
+        }
+
+        var headers = ['participantId'].concat(ITEMS.map(function(it){ return it.id; })).concat(['total','timestamp']);
+        var row = [participantId || ''].concat(ITEMS.map(function(it){ return (it.id in scoresObj) ? scoresObj[it.id] : 0; })).concat([total || 0, new Date().toISOString()]);
+
+        var csv = headers.map(esc).join(',') + '\n' + row.map(esc).join(',') + '\n';
+        var safeId = (participantId && participantId.length) ? participantId.replace(/[^a-zA-Z0-9-_]/g,'') : 'unknown';
+        var filename = 'kc_scores_' + safeId + '_' + Date.now() + '.csv';
+
+        // show preview and only download if user confirms
+        console.log('exportScoresToCSV: prepared CSV, showing preview for', filename);
+        showCsvPreview(csv, filename, function(downloaded){
+          if (!downloaded) {
+            console.log('User cancelled CSV download (or preview failed) for', filename);
+          } else {
+            console.log('CSV downloaded:', filename);
+          }
+        });
+      } catch (e) { console.error('exportScoresToCSV failed', e); }
+    }
+
+    // --- Debug panel (visible when DEBUG_PANEL_ENABLED is true) ---
+  var DEBUG_PANEL_ENABLED = false;
+    function ensureDebugPanel() {
+      if (!DEBUG_PANEL_ENABLED) return null;
+      var existing = document.getElementById('kc-debug-panel');
+      if (existing) return existing;
+      var p = document.createElement('div'); p.id = 'kc-debug-panel';
+      p.style.position = 'fixed'; p.style.right = '12px'; p.style.bottom = '12px'; p.style.width = '300px'; p.style.maxHeight = '60vh';
+      p.style.overflow = 'auto'; p.style.background = '#fff'; p.style.border = '1px solid #ccc'; p.style.borderRadius = '8px'; p.style.padding = '8px'; p.style.zIndex = 200001; p.style.fontSize = '12px';
+
+      var title = document.createElement('div'); title.textContent = 'DEBUG'; title.style.fontWeight = '700'; title.style.marginBottom = '6px'; p.appendChild(title);
+      var pid = document.createElement('div'); pid.id = 'kc-debug-pid'; p.appendChild(pid);
+      var scoresPre = document.createElement('pre'); scoresPre.id = 'kc-debug-scores'; scoresPre.style.background = '#f6f6f6'; scoresPre.style.padding = '6px'; scoresPre.style.whiteSpace = 'pre-wrap'; scoresPre.style.maxHeight = '180px'; scoresPre.style.overflow = 'auto'; p.appendChild(scoresPre);
+      var csvPreview = document.createElement('pre'); csvPreview.id = 'kc-debug-csv'; csvPreview.style.background = '#fffbe6'; csvPreview.style.padding = '6px'; csvPreview.style.whiteSpace = 'pre-wrap'; csvPreview.style.maxHeight = '180px'; csvPreview.style.overflow = 'auto'; p.appendChild(csvPreview);
+
+      var btnRow = document.createElement('div'); btnRow.style.display = 'flex'; btnRow.style.gap = '6px'; btnRow.style.marginTop = '6px';
+      var refresh = document.createElement('button'); refresh.textContent = 'Refresh'; refresh.className = 'jspsych-btn';
+      var preview = document.createElement('button'); preview.textContent = 'Preview CSV'; preview.className = 'jspsych-btn';
+      var download = document.createElement('button'); download.textContent = 'Download CSV'; download.className = 'jspsych-btn';
+      btnRow.appendChild(refresh); btnRow.appendChild(preview); btnRow.appendChild(download); p.appendChild(btnRow);
+
+      refresh.onclick = function(){ renderDebugPanel(); };
+      preview.onclick = function(){ manualPreviewFromDebug(); };
+      download.onclick = function(){ manualDownloadFromDebug(); };
+
+      document.body.appendChild(p);
+      renderDebugPanel();
+      return p;
+    }
+
+    function renderDebugPanel() {
+      try {
+        var pidEl = document.getElementById('kc-debug-pid');
+        var scoresEl = document.getElementById('kc-debug-scores');
+        var csvEl = document.getElementById('kc-debug-csv');
+        if (!pidEl) return;
+        var pid = jsPsych && jsPsych.data ? (jsPsych.data.get().values().length ? jsPsych.data.get().select('participantId').values()[0] : jsPsych.data.getURLVariable('ParticipantID')) : '';
+        pidEl.textContent = 'participantId: ' + (pid || '');
+        scoresEl.textContent = JSON.stringify(SCORES, null, 2);
+        // generate a tiny CSV preview
+        try {
+          var headers = ['participantId'].concat(ITEMS.map(function(it){ return it.id; })).concat(['total','timestamp']);
+          var total = ITEMS.reduce(function(acc,it){ return acc + ((it.id in SCORES) ? SCORES[it.id] : 0); }, 0);
+          var row = [pid || ''].concat(ITEMS.map(function(it){ return (it.id in SCORES) ? SCORES[it.id] : 0; })).concat([total || 0, new Date().toISOString()]);
+          var csv = headers.join(',') + '\n' + row.join(',');
+          csvEl.textContent = csv;
+        } catch (e) { csvEl.textContent = 'csv preview error: ' + e.message; }
+      } catch (e) { console.error('renderDebugPanel failed', e); }
+    }
+
+    function manualPreviewFromDebug() {
+      try {
+        var csv = document.getElementById('kc-debug-csv').textContent || '';
+        var pid = jsPsych.data.get().select('participantId').values()[0] || jsPsych.data.getURLVariable('ParticipantID') || '';
+        var filename = 'kc_scores_' + ((pid && pid.length) ? pid.replace(/[^a-zA-Z0-9-_]/g,'') : 'unknown') + '_' + Date.now() + '.csv';
+        showCsvPreview(csv, filename, function(downloaded){ console.log('manual preview callback downloaded=', downloaded); });
+      } catch (e) { console.error('manualPreviewFromDebug failed', e); }
+    }
+
+    function manualDownloadFromDebug() {
+      try {
+        var csv = document.getElementById('kc-debug-csv').textContent || '';
+        var pid = jsPsych.data.get().select('participantId').values()[0] || jsPsych.data.getURLVariable('ParticipantID') || '';
+        var safeId = (pid && pid.length) ? pid.replace(/[^a-zA-Z0-9-_]/g,'') : 'unknown';
+        var filename = 'kc_scores_' + safeId + '_' + Date.now() + '.csv';
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob); var a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+      } catch (e) { console.error('manualDownloadFromDebug failed', e); }
+    }
+
+    // Initialize debug panel after DOM ready
+    try { if (document.readyState === 'complete' || document.readyState === 'interactive') { setTimeout(ensureDebugPanel, 50); } else { document.addEventListener('DOMContentLoaded', function(){ setTimeout(ensureDebugPanel, 50); }); } } catch (e) { console.error('init debug panel failed', e); }
+
+    // POST results to a remote collector (Apps Script or server)
+    function postResultsToServer(endpointUrl, secretToken, payload) {
+      try {
+        var body = Object.assign({}, payload);
+        if (secretToken) body.secret = secretToken;
+        fetch(endpointUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        }).then(function(resp){
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          return resp.json().catch(function(){ return { status: 'ok' }; });
+        }).then(function(j){
+          console.log('postResultsToServer success', j);
+        }).catch(function(err){
+          console.error('postResultsToServer failed', err);
+        });
+      } catch (e) { console.error('postResultsToServer exception', e); }
+    }
+
     // Preloading removed for local testing (was showing an unreliable loading page)
 
+    // jsPsych (v6) is exposed as window.jsPsych from the included jspsych.js.
+    // Read the ParticipantID URL parameter and add it to jsPsych data properties.
+    try {
+      var participantId = (window.jsPsych && jsPsych.data && jsPsych.data.getURLVariable) ? jsPsych.data.getURLVariable('ParticipantID') : '';
+      if (window.jsPsych && jsPsych.data && jsPsych.data.addProperties) {
+        jsPsych.data.addProperties({ participantId: participantId });
+      }
+    } catch (e) { console.error('setting participantId failed', e); }
     // ======= INSTRUCTIONS =======
     var instructions = {
       type: 'html-button-response',
@@ -536,6 +738,37 @@
           if (window.jatos && jatos.submitResultData) {
             jatos.submitResultData(all, jatos.endStudy);
           }
+          try {
+            // Prepare scores object and render CSV directly on the page (no modal/download)
+            var scoresObj = {};
+            var total = 0;
+            ITEMS.forEach(function(it){ var s = (it.id in SCORES) ? SCORES[it.id] : (window[it.id + 'Score'] || 0); scoresObj[it.id] = s; total += (s||0); });
+            var pid = (jsPsych && jsPsych.data && jsPsych.data.select) ? (jsPsych.data.get().select('participantId').values()[0] || jsPsych.data.getURLVariable('ParticipantID')) : (jsPsych && jsPsych.data ? jsPsych.data.getURLVariable('ParticipantID') : '');
+            // build CSV
+            function esc(v) { if (v === null || v === undefined) return ''; var s = String(v); if (s.indexOf(',') !== -1 || s.indexOf('\n') !== -1 || s.indexOf('"') !== -1) { return '"' + s.replace(/"/g, '""') + '"'; } return s; }
+            var headers = ['participantId'].concat(ITEMS.map(function(it){ return it.id; })).concat(['total','timestamp']);
+            var row = [pid || ''].concat(ITEMS.map(function(it){ return (it.id in scoresObj) ? scoresObj[it.id] : 0; })).concat([total || 0, new Date().toISOString()]);
+            var csv = headers.map(esc).join(',') + '\n' + row.map(esc).join(',') + '\n';
+            // append CSV to page
+            try {
+              var target = document.getElementById('jspsych-target') || document.body;
+              var out = document.getElementById('kc-final-csv');
+              if (!out) {
+                out = document.createElement('pre'); out.id = 'kc-final-csv'; out.style.background = '#f6f6f6'; out.style.padding = '12px'; out.style.border = '1px solid #ddd'; out.style.maxWidth = '820px'; out.style.whiteSpace = 'pre-wrap'; out.style.overflow = 'auto'; out.style.marginTop = '12px';
+                target.appendChild(out);
+              }
+              out.textContent = csv;
+            } catch (ee2) { console.error('render CSV to page failed', ee2); }
+          } catch (ee) { console.error('CSV generation failed', ee); }
+            // POST results to remote collector if configured
+            try {
+              var REMOTE_ENDPOINT = window.KC_REMOTE_ENDPOINT || ''; // set this in parent page or before running
+              var REMOTE_SECRET = window.KC_REMOTE_SECRET || ''; // optional secret to include
+              if (REMOTE_ENDPOINT) {
+                var payload = { participantId: pid, item_ids: ITEMS.map(function(it){ return it.id; }), scores: scoresObj, total: total };
+                postResultsToServer(REMOTE_ENDPOINT, REMOTE_SECRET, payload);
+              }
+            } catch (ee3) { console.error('post to remote failed', ee3); }
         } catch (e) { console.error('feedback on_finish error', e); }
       }
     };
