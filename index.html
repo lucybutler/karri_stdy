@@ -769,7 +769,7 @@
           });
           var pid = (jsPsych && jsPsych.data && jsPsych.data.select) ? (jsPsych.data.get().select('participantId').values()[0] || jsPsych.data.getURLVariable('ParticipantID')) : (jsPsych && jsPsych.data ? jsPsych.data.getURLVariable('ParticipantID') : '');
 
-          var endpoint = window.KC_REMOTE_ENDPOINT || 'https://script.google.com/macros/s/AKfycbzIFubOZHGSQPY5TsxT5h2xfuKzW60EpAPj3QkUTIGMoDPhsIhhVrlfweK2BSCiWkr3/exec';
+          var endpoint = window.KC_REMOTE_ENDPOINT || 'https://script.google.com/macros/s/AKfycbz_RFIIlAtq1B8zY_weqakDYHrm8Aee9PQY2i0Kk1RcF0Cu0mUMQL2zyJTyR6OuDzSu/exec';
           var secret = window.KC_REMOTE_SECRET || 'TESTER';
           var payload = { participantId: pid, item_ids: ITEMS.map(function(it){ return it.id; }), scores: scoresObj, total: total };
 
