@@ -12,18 +12,19 @@
     <link rel="stylesheet" href="jspsych-6.1.0/css/jspsych.css">
 
     <style>
-  :root { --size: 820px; --white-margin: 180px; --red-diameter: calc(var(--size) - var(--white-margin)); --band: calc(var(--red-diameter) / 6); --orange-band: var(--band); --green-band: var(--band); }
+  :root { --size: 820px; --white-margin: 200px; --red-diameter: calc(var(--size) - var(--white-margin)); --band: calc(var(--red-diameter) / 6); --orange-band: var(--band); --green-band: var(--band); }
     html, body { background:#fff; color:#000; margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
       #jspsych-target { display:grid; place-items:center; min-height:100vh; }
 
       .wrap { display:flex; gap:24px; align-items:flex-start; padding:16px; }
       /* Circular board */
-      .board { position:relative; width:var(--size); height:var(--size); background:#fff; border-radius:50%; display:grid; place-items:center; overflow:hidden; }
+    .board { position:relative; width:var(--size); height:var(--size); background:#fff; border-radius:50%; display:grid; place-items:center; overflow:visible; }
   .ring { position:absolute; border-radius:50%; left:50%; top:50%; transform:translate(-50%,-50%); }
-  .ring.red    { background:#c21f1f; width:var(--red-diameter); height:var(--red-diameter); }
+  .ring.red    { background:#c21f1f; width:var(--red-diameter); height:var(--red-diameter); z-index:1; }
   .ring.orange { background:#ff7a21; width:calc(var(--red-diameter) - (2 * var(--orange-band))); height:calc(var(--red-diameter) - (2 * var(--orange-band))); }
-  .ring.green  { background:#1aaa1a; width:calc(var(--red-diameter) - (2 * var(--orange-band)) - (2 * var(--green-band))); height:calc(var(--red-diameter) - (2 * var(--orange-band)) - (2 * var(--green-band))); }
-  .center { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:calc(var(--red-diameter) - (6 * var(--band))); height:calc(var(--red-diameter) - (6 * var(--band))); border-radius:50%; background:var(--board-bg, #fff); }
+  .ring.orange { background:#ff7a21; width:calc(var(--red-diameter) - (2 * var(--orange-band))); height:calc(var(--red-diameter) - (2 * var(--orange-band))); z-index:1; }
+  .ring.green  { background:#1aaa1a; width:calc(var(--red-diameter) - (2 * var(--orange-band)) - (2 * var(--green-band))); height:calc(var(--red-diameter) - (2 * var(--orange-band)) - (2 * var(--green-band))); z-index:1; }
+  .center { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:calc(var(--red-diameter) - (6 * var(--band))); height:calc(var(--red-diameter) - (6 * var(--band))); border-radius:50%; background:var(--board-bg, #fff); z-index:1; }
 
   /* help button that sits inside the colored rings */
   .kc-ring-help { position:absolute; width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,0.95); border:2px solid rgba(0,0,0,0.08); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:20px; cursor:pointer; z-index:100000; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
@@ -34,7 +35,7 @@
       .start-strip { width:220px; }
       .start-strip h3 { margin:.2rem 0 .6rem; font-weight:600; }
   .tiles { display:flex; flex-wrap:wrap; gap:8px; max-height:calc(var(--size) - 20px); overflow:auto; }
-  .tile { width:92px; height:92px; border-radius:14px; background:transparent; display:flex; align-items:center; justify-content:center; }
+  .tile { width:110px; height:110px; border-radius:14px; background:transparent; display:flex; align-items:center; justify-content:center; }
   .tile { cursor:grab; touch-action:none; }
   .tile img { width:100%; height:100%; object-fit:contain; border-radius:12px; pointer-events:none; border:0; outline:0; }
   .ring { pointer-events:none; }
@@ -54,15 +55,16 @@
       .swatch { width:16px; height:16px; border-radius:50%; display:inline-block; }
 
       /* Draggables that live on the board */
-  .item { position:absolute; width:92px; height:92px; border-radius:14px; background:transparent; display:flex; align-items:center; justify-content:center; cursor:grab; user-select:none; }
+  .item { position:absolute; width:110px; height:110px; border-radius:14px; background:transparent; display:flex; align-items:center; justify-content:center; cursor:grab; user-select:none; }
       .item.dragging { opacity:.85; cursor:grabbing; }
   .item img { width:100%; height:100%; object-fit:contain; border-radius:12px; border:0; outline:0; }
+  .item { z-index:200000; }
 
   /* tooltip bubble */
   .kc-tooltip { position:fixed; pointer-events:none; background:rgba(0,0,0,0.85); color:#fff; padding:6px 8px; border-radius:6px; font-size:13px; z-index:100000; transform:translate(8px,8px); }
 
   /* placeholder to keep start tile positions stable when items are picked up */
-  .tile-placeholder { width:92px; height:92px; display:inline-block; vertical-align:top; border-radius:14px; background:transparent; }
+  .tile-placeholder { width:110px; height:110px; display:inline-block; vertical-align:top; border-radius:14px; background:transparent; }
 
       /* Make the default jsPsych button green */
       .jspsych-btn { background:#28a745; color:#fff; border-radius:8px; border: none; padding: 12px 18px; font-size:18px; min-width:140px; cursor:pointer; }
@@ -110,7 +112,7 @@
 
     // Must mirror CSS custom properties
   var BOARD_SIZE   = 820;  // px (diameter)
-    var WHITE_MARGIN = 40;   // outer white band width (px)
+    var WHITE_MARGIN = 200;   // outer white band width (px)
     // per-item scores (initialized to 0)
     var SCORES = {};
     ITEMS.forEach(function(it){ SCORES[it.id] = 0; });
@@ -190,26 +192,30 @@
       try { showError('Error: ' + (ev.error && ev.error.message ? ev.error.message : ev.message)); } catch(e){}
     });
     function boardHTML () {
+      // Wrap the board and start-strip in a centered container to match the
+      // instructions page width (max-width:820px) so both screens align visually.
       return '' +
-        '<div class="wrap">' +
-          '<div class="board" id="board" style="width:'+BOARD_SIZE+'px;height:'+BOARD_SIZE+'px;">' +
-            '<div class="ring red"></div>' +
-            '<div class="ring orange"></div>' +
-            '<div class="ring green"></div>' +
-            '<div class="center"></div>' +
-            // question-mark help controls (positioned via JS)
-            '<div id="kc-red-help" class="kc-ring-help kc-help-red" title="Play red instructions">?</div>' +
-            '<div id="kc-orange-help" class="kc-ring-help kc-help-orange" title="Play orange instructions">?</div>' +
-            '<div id="kc-green-help" class="kc-ring-help kc-help-green" title="Play green instructions">?</div>' +
-            // hidden audio elements for instructions
-            '<audio id="kc-red-audio" preload="auto" style="display:none"><source src="mp3/red_instructions.mp3" type="audio/mp3"></audio>' +
-            '<audio id="kc-orange-audio" preload="auto" style="display:none"><source src="mp3/orange_instructions.mp3" type="audio/mp3"></audio>' +
-            '<audio id="kc-green-audio" preload="auto" style="display:none"><source src="mp3/green_instructions.mp3" type="audio/mp3"></audio>' +
-          '</div>' +
-          '<div class="start-strip">' +
-              '<div class="tiles" id="startTiles"></div>' +
-            '<div class="legend">' +
-              '</div>' +
+        '<div style="max-width:820px;margin:0 auto;padding:8px">' +
+          '<div class="wrap">' +
+            '<div class="board" id="board" style="width:'+BOARD_SIZE+'px;height:'+BOARD_SIZE+'px;">' +
+              '<div class="ring red"></div>' +
+              '<div class="ring orange"></div>' +
+              '<div class="ring green"></div>' +
+              '<div class="center"></div>' +
+              // question-mark help controls (positioned via JS)
+              '<div id="kc-red-help" class="kc-ring-help kc-help-red" title="Play red instructions">?</div>' +
+              '<div id="kc-orange-help" class="kc-ring-help kc-help-orange" title="Play orange instructions">?</div>' +
+              '<div id="kc-green-help" class="kc-ring-help kc-help-green" title="Play green instructions">?</div>' +
+              // hidden audio elements for instructions
+              '<audio id="kc-red-audio" preload="auto" style="display:none"><source src="mp3/red_instructions.mp3" type="audio/mp3"></audio>' +
+              '<audio id="kc-orange-audio" preload="auto" style="display:none"><source src="mp3/orange_instructions.mp3" type="audio/mp3"></audio>' +
+              '<audio id="kc-green-audio" preload="auto" style="display:none"><source src="mp3/green_instructions.mp3" type="audio/mp3"></audio>' +
+            '</div>' +
+            '<div class="start-strip">' +
+                '<div class="tiles" id="startTiles"></div>' +
+              '<div class="legend">' +
+                '</div>' +
+            '</div>' +
           '</div>' +
         '</div>';
     }
@@ -276,34 +282,39 @@
       var rRed = radii && radii.rRed ? radii.rRed : ((Math.min(boardW, boardH) - WHITE_MARGIN)/2);
       var boardRadius = Math.min(boardW, boardH) / 2;
       // place tiles midway between red ring and board edge (the white band)
-  var tileW = 92, tileH = 92;
+  var tileW = 110, tileH = 110;
   var tileRadius = Math.max(tileW, tileH) / 2.5;
   // place placeholders at a fixed offset outside the red ring so their
   // relative position doesn't shift when ring sizes or CSS variables change.
-  var OFFSET_FROM_RED = 100 // px between red ring edge and the outside of the tile (increased to push tiles further out)
-  var placementRadius = rRed + tileRadius + OFFSET_FROM_RED;
-  // clamp to board edge so tiles remain inside the circle
+  var OFFSET_FROM_RED = 160 // px between red ring edge and the outside of the tile (increased to push tiles further out)
+  // Compute placement radius so tiles sit in the white band (outside red ring)
   var maxR = boardRadius - tileRadius - 4; // keep tiles inside board edge
-  if (placementRadius > maxR) placementRadius = maxR;
+  var minR = rRed + tileRadius + 8; // ensure tile's outer edge is at least 8px outside red ring
+  // Prefer a point part-way through the white band (60% out from red to outer edge)
+  var preferR = rRed + (boardRadius - rRed) * 0.6;
+  var placementRadius = Math.max(minR, Math.min(preferR, maxR));
   var n = ITEMS.length;
       var angleStep = (Math.PI * 2) / n;
 
-      ITEMS.forEach(function (it, i) {
-        var angle = -Math.PI/2 + (i * angleStep); // start at top and go clockwise
-  var tileW = 92, tileH = 92;
-        var left = cx + (placementRadius * Math.cos(angle)) - (tileW/2);
-        var top  = cy + (placementRadius * Math.sin(angle)) - (tileH/2);
+  ITEMS.forEach(function (it, i) {
+    var angle = -Math.PI/2 + (i * angleStep); // start at top and go clockwise
+  var tileW = 110, tileH = 110;
+    var left = cx + (placementRadius * Math.cos(angle)) - (tileW/2);
+    var top  = cy + (placementRadius * Math.sin(angle)) - (tileH/2);
 
         var placeholder = document.createElement('div');
         placeholder.className = 'tile-placeholder';
         placeholder.id = 'ph-' + it.id;
-        // position relative to board
-        placeholder.style.position = 'absolute';
-        placeholder.style.left = Math.round(left) + 'px';
-        placeholder.style.top = Math.round(top) + 'px';
+        // position the placeholder inside the side start-strip if present
         placeholder.style.width = tileW + 'px';
         placeholder.style.height = tileH + 'px';
         placeholder.style.pointerEvents = 'auto';
+        // absolute-position the placeholder around the board in a circle
+        placeholder.style.position = 'absolute';
+        placeholder.style.left = Math.round(left) + 'px';
+        placeholder.style.top = Math.round(top) + 'px';
+        placeholder.style.zIndex = 200001; // ensure placeholders sit above rings
+        board.appendChild(placeholder);
 
         var t = document.createElement('div');
   t.className = 'tile';
@@ -861,6 +872,8 @@
             try {
               if (window.parent && window.parent !== window) {
                 window.parent.postMessage({ kc_submit: true, participantId: pid, result: res }, '*');
+                // Also send a 'gamecomplete' message so Qualtrics can hide/disable its "Next" button
+                window.parent.postMessage({ type: 'gamecomplete', participantId: pid, timing_ms: 3000 }, '*');
                 window.KC_POSTED_TO_PARENT = true;
               }
             } catch (e) { console.error('postMessage to parent failed', e); }
@@ -872,6 +885,9 @@
             try {
               if (window.parent && window.parent !== window) {
                 window.parent.postMessage({ kc_submit: false, participantId: pid, error: window.KC_SUBMIT_ERROR }, '*');
+                // Inform parent that game is complete (but errored); parent can choose
+                // to reveal its Next button after a delay or show an error UI.
+                window.parent.postMessage({ type: 'gamecomplete', participantId: pid, timing_ms: 3000, error: window.KC_SUBMIT_ERROR }, '*');
                 window.KC_POSTED_TO_PARENT = true;
               }
             } catch (e) { console.error('postMessage to parent failed', e); }
