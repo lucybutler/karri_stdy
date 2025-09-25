@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="jspsych-6.1.0/css/jspsych.css">
 
     <style>
-  :root { --size: 820px; --white-margin: 40px; --red-diameter: calc(var(--size) - var(--white-margin)); --band: calc(var(--red-diameter) / 6); --orange-band: var(--band); --green-band: var(--band); }
+  :root { --size: 820px; --white-margin: 180px; --red-diameter: calc(var(--size) - var(--white-margin)); --band: calc(var(--red-diameter) / 6); --orange-band: var(--band); --green-band: var(--band); }
     html, body { background:#fff; color:#000; margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
       #jspsych-target { display:grid; place-items:center; min-height:100vh; }
 
@@ -20,18 +20,33 @@
       /* Circular board */
       .board { position:relative; width:var(--size); height:var(--size); background:#fff; border-radius:50%; display:grid; place-items:center; overflow:hidden; }
   .ring { position:absolute; border-radius:50%; left:50%; top:50%; transform:translate(-50%,-50%); }
-  .ring.red    { background:#b11a1a; width:var(--red-diameter); height:var(--red-diameter); }
-  .ring.orange { background:#de6b1f; width:calc(var(--red-diameter) - (2 * var(--orange-band))); height:calc(var(--red-diameter) - (2 * var(--orange-band))); }
-  .ring.green  { background:#2e8b2e; width:calc(var(--red-diameter) - (2 * var(--orange-band)) - (2 * var(--green-band))); height:calc(var(--red-diameter) - (2 * var(--orange-band)) - (2 * var(--green-band))); }
+  .ring.red    { background:#c21f1f; width:var(--red-diameter); height:var(--red-diameter); }
+  .ring.orange { background:#ff7a21; width:calc(var(--red-diameter) - (2 * var(--orange-band))); height:calc(var(--red-diameter) - (2 * var(--orange-band))); }
+  .ring.green  { background:#1aaa1a; width:calc(var(--red-diameter) - (2 * var(--orange-band)) - (2 * var(--green-band))); height:calc(var(--red-diameter) - (2 * var(--orange-band)) - (2 * var(--green-band))); }
   .center { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:calc(var(--red-diameter) - (6 * var(--band))); height:calc(var(--red-diameter) - (6 * var(--band))); border-radius:50%; background:var(--board-bg, #fff); }
+
+  /* help button that sits inside the colored rings */
+  .kc-ring-help { position:absolute; width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,0.95); border:2px solid rgba(0,0,0,0.08); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:20px; cursor:pointer; z-index:100000; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+  .kc-ring-help.kc-help-red    { color:#c21f1f; }
+  .kc-ring-help.kc-help-orange { color:#ff7a21; }
+  .kc-ring-help.kc-help-green  { color:#1aaa1a; }
 
       .start-strip { width:220px; }
       .start-strip h3 { margin:.2rem 0 .6rem; font-weight:600; }
   .tiles { display:flex; flex-wrap:wrap; gap:8px; max-height:calc(var(--size) - 20px); overflow:auto; }
-  .tile { width:74px; height:74px; border-radius:12px; background:transparent; display:flex; align-items:center; justify-content:center; }
+  .tile { width:92px; height:92px; border-radius:14px; background:transparent; display:flex; align-items:center; justify-content:center; }
   .tile { cursor:grab; touch-action:none; }
-  .tile img { width:100%; height:100%; object-fit:contain; border-radius:10px; pointer-events:none; border:0; outline:0; }
+  .tile img { width:100%; height:100%; object-fit:contain; border-radius:12px; pointer-events:none; border:0; outline:0; }
   .ring { pointer-events:none; }
+  /* larger text for item labels (when images are not used) */
+  .tile { font-size: 26px; font-weight:700; }
+  /* make tooltip text bigger for readability */
+  .kc-tooltip { font-size: 18px; padding:8px 10px; }
+  /* increase legend font-size slightly */
+  .legend { font-size: 1.2rem; }
+  /* We use the mouse-following tooltip (kc-tooltip) instead of CSS overlays */
+  /* Make the mouse-following tooltip larger and more readable */
+  .kc-tooltip { font-size: 20px; padding:10px 12px; }
   .ring.active { filter: brightness(1.25); box-shadow: 0 0 18px rgba(0,0,0,0.25) inset; }
 
       .legend { font-size:.9rem; opacity:.85; line-height:1.4; margin-top:.75rem; }
@@ -39,19 +54,21 @@
       .swatch { width:16px; height:16px; border-radius:50%; display:inline-block; }
 
       /* Draggables that live on the board */
-  .item { position:absolute; width:74px; height:74px; border-radius:12px; background:transparent; display:flex; align-items:center; justify-content:center; cursor:grab; user-select:none; }
+  .item { position:absolute; width:92px; height:92px; border-radius:14px; background:transparent; display:flex; align-items:center; justify-content:center; cursor:grab; user-select:none; }
       .item.dragging { opacity:.85; cursor:grabbing; }
-  .item img { width:100%; height:100%; object-fit:contain; border-radius:10px; border:0; outline:0; }
+  .item img { width:100%; height:100%; object-fit:contain; border-radius:12px; border:0; outline:0; }
 
   /* tooltip bubble */
   .kc-tooltip { position:fixed; pointer-events:none; background:rgba(0,0,0,0.85); color:#fff; padding:6px 8px; border-radius:6px; font-size:13px; z-index:100000; transform:translate(8px,8px); }
 
   /* placeholder to keep start tile positions stable when items are picked up */
-  .tile-placeholder { width:74px; height:74px; display:inline-block; vertical-align:top; border-radius:12px; background:transparent; }
+  .tile-placeholder { width:92px; height:92px; display:inline-block; vertical-align:top; border-radius:14px; background:transparent; }
 
-      /* Make the default jsPsych button readable on dark bg */
-  .jspsych-btn { background:#e0e0e0; color:#000; border-radius:8px; }
+      /* Make the default jsPsych button green */
+      .jspsych-btn { background:#28a745; color:#fff; border-radius:8px; border: none; padding: 12px 18px; font-size:18px; min-width:140px; cursor:pointer; }
   .jspsych-content { color:#000; }
+      /* special green continue button used on final screen */
+      .kc-continue-btn { background: #28a745 !important; color: #fff !important; border: none; }
     </style>
   </head>
   <body>
@@ -180,6 +197,14 @@
             '<div class="ring orange"></div>' +
             '<div class="ring green"></div>' +
             '<div class="center"></div>' +
+            // question-mark help controls (positioned via JS)
+            '<div id="kc-red-help" class="kc-ring-help kc-help-red" title="Play red instructions">?</div>' +
+            '<div id="kc-orange-help" class="kc-ring-help kc-help-orange" title="Play orange instructions">?</div>' +
+            '<div id="kc-green-help" class="kc-ring-help kc-help-green" title="Play green instructions">?</div>' +
+            // hidden audio elements for instructions
+            '<audio id="kc-red-audio" preload="auto" style="display:none"><source src="mp3/red_instructions.mp3" type="audio/mp3"></audio>' +
+            '<audio id="kc-orange-audio" preload="auto" style="display:none"><source src="mp3/orange_instructions.mp3" type="audio/mp3"></audio>' +
+            '<audio id="kc-green-audio" preload="auto" style="display:none"><source src="mp3/green_instructions.mp3" type="audio/mp3"></audio>' +
           '</div>' +
           '<div class="start-strip">' +
               '<div class="tiles" id="startTiles"></div>' +
@@ -189,39 +214,132 @@
         '</div>';
     }
 
+    // Generic helper to position a help control for a given band and attach playback
+  function setupRingHelpControl(helpId, audioId, bandOuterRadiusName, bandInnerRadiusName, angleRadians, yOffsetPixels) {
+      try {
+        var board = document.getElementById('board');
+        if (!board) return;
+        var help = document.getElementById(helpId);
+        var audio = document.getElementById(audioId);
+        var radii = computeRadii(board) || {};
+        var boardRect = board.getBoundingClientRect();
+        var cx = boardRect.width / 2;
+        var cy = boardRect.height / 2;
+        var rOuter = radii[bandOuterRadiusName] || (Math.min(boardRect.width, boardRect.height) / 2);
+        var rInner = radii[bandInnerRadiusName] || (rOuter - (ORANGE_BAND || 0));
+        var placementRadius = (rOuter + rInner) / 2;
+        var angle = (typeof angleRadians === 'number') ? angleRadians : -Math.PI/2;
+        if (help) {
+          var hw = help.offsetWidth || 44;
+          var hh = help.offsetHeight || 44;
+          var left = cx + (placementRadius * Math.cos(angle)) - (hw/2);
+          var top  = cy + (placementRadius * Math.sin(angle)) - (hh/2);
+          if (typeof yOffsetPixels === 'number' && yOffsetPixels !== 0) top = top + yOffsetPixels;
+          help.style.left = Math.round(left) + 'px';
+          help.style.top  = Math.round(top) + 'px';
+        }
+        if (help && audio) {
+          // ensure click plays the correct audio; fall back to Audio API on failure
+          help.addEventListener('click', function(){
+            try {
+              var p = audio.play();
+              if (p && p.then) p.catch(function(){ try { new Audio(audio.querySelector('source').src).play(); } catch(e){} });
+            } catch (e) { try { new Audio(audio.querySelector('source').src).play(); } catch(e){} }
+          });
+        }
+      } catch (e) { console.error('setupRingHelpControl failed for', helpId, e); }
+    }
+
+    // Convenience calls to set up each ring control (angles in radians)
+    function setupAllRingHelpControls() {
+      // place all controls along the same vertical line (top direction, -90deg)
+      setupRingHelpControl('kc-red-help', 'kc-red-audio', 'rRed', 'rOrange', -Math.PI/2);
+      setupRingHelpControl('kc-orange-help', 'kc-orange-audio', 'rOrange', 'rGreen', -Math.PI/2);
+      // nudge the green control down further to avoid overlap
+      setupRingHelpControl('kc-green-help', 'kc-green-audio', 'rGreen', 'rGreen', -Math.PI/2, 40);
+    }
+
     function placeStartTiles () {
-      var tiles = document.getElementById('startTiles');
       var board = document.getElementById('board');
-      ITEMS.forEach(function (it) {
+      if (!board) return;
+      // clear any existing placeholders that might have been created previously
+      var existing = board.querySelectorAll('.tile-placeholder');
+      existing.forEach(function(el){ try { el.parentNode.removeChild(el); } catch(e){} });
+
+      // compute geometry
+      var boardRect = board.getBoundingClientRect();
+      var boardW = boardRect.width || BOARD_SIZE;
+      var boardH = boardRect.height || BOARD_SIZE;
+      var cx = boardW / 2;
+      var cy = boardH / 2;
+      var radii = computeRadii(board);
+      var rRed = radii && radii.rRed ? radii.rRed : ((Math.min(boardW, boardH) - WHITE_MARGIN)/2);
+      var boardRadius = Math.min(boardW, boardH) / 2;
+      // place tiles midway between red ring and board edge (the white band)
+  var tileW = 92, tileH = 92;
+  var tileRadius = Math.max(tileW, tileH) / 2.5;
+  // place placeholders at a fixed offset outside the red ring so their
+  // relative position doesn't shift when ring sizes or CSS variables change.
+  var OFFSET_FROM_RED = 100 // px between red ring edge and the outside of the tile (increased to push tiles further out)
+  var placementRadius = rRed + tileRadius + OFFSET_FROM_RED;
+  // clamp to board edge so tiles remain inside the circle
+  var maxR = boardRadius - tileRadius - 4; // keep tiles inside board edge
+  if (placementRadius > maxR) placementRadius = maxR;
+  var n = ITEMS.length;
+      var angleStep = (Math.PI * 2) / n;
+
+      ITEMS.forEach(function (it, i) {
+        var angle = -Math.PI/2 + (i * angleStep); // start at top and go clockwise
+  var tileW = 92, tileH = 92;
+        var left = cx + (placementRadius * Math.cos(angle)) - (tileW/2);
+        var top  = cy + (placementRadius * Math.sin(angle)) - (tileH/2);
+
+        var placeholder = document.createElement('div');
+        placeholder.className = 'tile-placeholder';
+        placeholder.id = 'ph-' + it.id;
+        // position relative to board
+        placeholder.style.position = 'absolute';
+        placeholder.style.left = Math.round(left) + 'px';
+        placeholder.style.top = Math.round(top) + 'px';
+        placeholder.style.width = tileW + 'px';
+        placeholder.style.height = tileH + 'px';
+        placeholder.style.pointerEvents = 'auto';
+
         var t = document.createElement('div');
-        t.className = 'tile';
-        t.id = 'tile-' + it.id;
-        t.setAttribute('data-id', it.id);
+  t.className = 'tile';
+  t.id = 'tile-' + it.id;
+  t.setAttribute('data-id', it.id);
         if (it.img) {
           var im = document.createElement('img');
-          im.src = it.img; im.alt = it.label;
-          im.draggable = false;
-          t.appendChild(im);
+          im.src = it.img; im.alt = it.label; im.draggable = false; t.appendChild(im);
         } else {
           t.textContent = it.label;
         }
-  // create a placeholder to hold the tile's slot so layout doesn't change
-  var placeholder = document.createElement('div'); placeholder.className = 'tile-placeholder'; placeholder.id = 'ph-' + it.id;
-  placeholder.appendChild(t);
-  tiles.appendChild(placeholder);
-  // make the tile draggable; when dragging starts it will be moved into the board
-  // ensure pointer events are enabled
-  t.style.touchAction = 'none';
-  enableDrag(t, board);
-  attachTooltip(t, it.label);
+        t.style.touchAction = 'none';
+
+        placeholder.appendChild(t);
+        board.appendChild(placeholder);
+        enableDrag(t, board);
+        attachTooltip(t, it.label);
       });
+      // ensure the ring help controls are positioned and wired up
+      try { setTimeout(setupAllRingHelpControls, 20); } catch(e){}
     }
 
     // tooltip element (singleton)
     var kc_tooltip = null;
     function ensureTooltip(){
       if (kc_tooltip) return kc_tooltip;
-      kc_tooltip = document.createElement('div'); kc_tooltip.className = 'kc-tooltip'; kc_tooltip.style.display = 'none'; document.body.appendChild(kc_tooltip);
+      kc_tooltip = document.createElement('div'); kc_tooltip.className = 'kc-tooltip'; kc_tooltip.style.display = 'none';
+      // ensure the tooltip is large and readable even if CSS is overridden
+      kc_tooltip.style.fontSize = '22px';
+      kc_tooltip.style.padding = '10px 12px';
+      kc_tooltip.style.lineHeight = '1.2';
+      kc_tooltip.style.borderRadius = '8px';
+      kc_tooltip.style.background = 'rgba(0,0,0,0.85)';
+      kc_tooltip.style.color = '#fff';
+      kc_tooltip.style.zIndex = 100000;
+      document.body.appendChild(kc_tooltip);
       return kc_tooltip;
     }
     function showTooltip(text, x, y){
@@ -618,11 +736,11 @@
           return resp.json().catch(function(){ return { status: 'ok' }; });
         }).then(function(j){
           console.log('postResultsToServer success', j);
-          try { showError('Remote POST successful: ' + (j && j.status ? JSON.stringify(j) : 'ok')); } catch(e){}
+          try { if (!window.KC_SUPPRESS_SHOWERROR) { showError('Remote POST successful: ' + (j && j.status ? JSON.stringify(j) : 'ok')); } } catch(e){}
           return j;
         }).catch(function(err){
           console.error('postResultsToServer failed', err);
-          try { showError('Remote POST failed: ' + (err && err.message ? err.message : String(err))); } catch(e){}
+          try { if (!window.KC_SUPPRESS_SHOWERROR) { showError('Remote POST failed: ' + (err && err.message ? err.message : String(err))); } } catch(e){}
           throw err;
         });
       } catch (e) { console.error('postResultsToServer exception', e); }
@@ -641,10 +759,13 @@
       stimulus:
         '<div style="max-width:820px">' +
           '<h2>In this game you will XXX</h2>' +
-          '</ul>' +
-          '<p>When you’re ready, click Continue.</p>' +
+          '<audio id="kc-welcome-audio" preload="auto" controls="true" autoplay="true" style="width:100%;margin-top:8px">' +
+            '<source type="audio/mp3" src="mp3/welcome.mp3">' +
+            'Your browser does not support the audio element.' +
+          '</audio>' +
+          '<p style="margin-top:12px">When you’re ready, click Continue.</p>' +
         '</div>',
-      choices: ['Continue']
+      choices: ['I am ready!']
     };
     timeline.push(instructions);
 
@@ -652,7 +773,9 @@
     var place_items_trial = {
       type: 'html-button-response',
       stimulus: function () { return boardHTML(); },
-      choices: ['Continue'],
+      choices: ['I am done!'],
+  // put the Continue button at the bottom center (default placement)
+  button_html: '<button class="jspsych-btn">%choice%</button>',
   on_load: function () { try { console.log('place_items_trial on_load'); placeStartTiles();
           // disable Continue until all items are placed
           window.kc_monitor_interval = window.kc_monitor_interval || setInterval(function(){
@@ -660,13 +783,16 @@
               var btn = document.querySelector('#jspsych-target .jspsych-btn');
               var placed = document.querySelectorAll('#board .item').length;
               if (btn) {
-                if (placed >= ITEMS.length) { btn.disabled = false; btn.classList.remove('disabled'); }
-                else { btn.disabled = true; btn.classList.add('disabled'); }
+                if (placed >= ITEMS.length) {
+                  btn.disabled = false; btn.classList.remove('disabled'); btn.style.display = ''; 
+                } else {
+                  btn.disabled = true; btn.classList.add('disabled'); btn.style.display = 'none';
+                }
               }
             } catch (e) { /* ignore */ }
           }, 200);
           // also disable immediately in case button is present now
-          try { var _b = document.querySelector('#jspsych-target .jspsych-btn'); if (_b) { _b.disabled = true; _b.classList.add('disabled'); } } catch(e){}
+          try { var _b = document.querySelector('#jspsych-target .jspsych-btn'); if (_b) { _b.disabled = true; _b.classList.add('disabled'); _b.style.display = 'none'; } } catch(e){}
         } catch (e) { console.error('Error in place_items_trial on_load', e); try { showError('place_items_trial on_load error: '+ e.message); } catch (ee){} } },
       on_finish: function (data) {
         try {
@@ -724,13 +850,31 @@
             window.KC_SUBMIT_DONE = true;
             return;
           }
-          try { showError('Submitting results to remote...'); } catch(e){}
+          // suppress visible status box during iframe/Qualtrics submission
+          window.KC_SUPPRESS_SHOWERROR = true;
+          console.log('Submitting results to remote...');
           postResultsToServer(endpoint, secret, payload).then(function(res){
             window.KC_SUBMIT_DONE = true; window.KC_SUBMIT_ERROR = null; 
-            try { showError('Submission finished.'); } catch(e){}
+            window.KC_SUPPRESS_SHOWERROR = false;
+            console.log('Submission finished.');
+            // notify parent (Qualtrics iframe) that submission completed
+            try {
+              if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ kc_submit: true, participantId: pid, result: res }, '*');
+                window.KC_POSTED_TO_PARENT = true;
+              }
+            } catch (e) { console.error('postMessage to parent failed', e); }
           }).catch(function(err){
             window.KC_SUBMIT_DONE = true; window.KC_SUBMIT_ERROR = (err && err.message) ? err.message : String(err);
-            try { showError('Submission failed: ' + window.KC_SUBMIT_ERROR); } catch(e){}
+            window.KC_SUPPRESS_SHOWERROR = false;
+            console.error('Submission failed: ' + window.KC_SUBMIT_ERROR);
+            // still attempt to notify parent of failure
+            try {
+              if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ kc_submit: false, participantId: pid, error: window.KC_SUBMIT_ERROR }, '*');
+                window.KC_POSTED_TO_PARENT = true;
+              }
+            } catch (e) { console.error('postMessage to parent failed', e); }
           });
         } catch (e) { console.error('start_post failed', e); window.KC_SUBMIT_DONE = true; window.KC_SUBMIT_ERROR = e && e.message ? e.message : String(e); }
       }
@@ -739,7 +883,12 @@
 
     var wait_for_submit = {
       type: 'html-keyboard-response',
-      stimulus: '<div style="max-width:820px"><h3>Submitting results — please wait.</h3><p>Please do not close this window.</p></div>',
+      stimulus: '<div style="max-width:820px">' +
+                 '<audio width="320" preload="auto" height="40" controls="true" class="qmedia" autoplay="true">' +
+                   '<source type="audio/mp3" src="mp3/complete.mp3">' +
+                 '</audio>' +
+                 '<div style="margin-top:12px;font-weight:600;">Hooray! You\'ve finished the activity!</div>' +
+               '</div>',
       choices: [],
       on_load: function() {
         try {
@@ -765,6 +914,35 @@
       }
     };
     timeline.push(wait_for_submit);
+
+    // ======= FINAL THANK YOU + AUDIO =======
+    var final_thanks = {
+      type: 'html-keyboard-response',
+      stimulus: function() {
+        return '' +
+          '<div>' +
+            '<audio width="320" preload="auto" height="40" controls="true" class="qmedia" autoplay="true">' +
+              '<source type="audio/mp3" src="mp3/complete.mp3">' +
+            '</audio>' +
+            '<div style="margin-top:12px;font-weight:600;">Hooray! You\'ve finished the activity!</div>' +
+            '<div>Well done!</div>' +
+          '</div>';
+      },
+      choices: [],
+      on_load: function() {
+        try {
+          // notify parent frame (Qualtrics) that the iframe is ready to continue
+          var pid = (jsPsych && jsPsych.data && jsPsych.data.select) ? (jsPsych.data.get().select('participantId').values()[0] || jsPsych.data.getURLVariable('ParticipantID')) : (jsPsych && jsPsych.data ? jsPsych.data.getURLVariable('ParticipantID') : '');
+          try {
+            if (window.parent && window.parent !== window) {
+              window.parent.postMessage({ kc_ready_to_continue: true, participantId: pid }, '*');
+              window.KC_POSTED_READY = true;
+            }
+          } catch (e) { console.error('postMessage to parent (ready) failed', e); }
+        } catch (e) { console.error('final_thanks on_load failed', e); }
+      }
+    };
+    timeline.push(final_thanks);
 
     // ...existing code...
 
