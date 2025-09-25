@@ -696,6 +696,38 @@
     };
     timeline.push(place_items_trial);
 
+    // ======= SILENT SUBMIT =======
+    // After the placement trial finishes, send results silently to the remote collector
+    var silent_submit = {
+      type: 'call-function',
+      func: function() {
+        try {
+          var scoresObj = {};
+          var total = 0;
+          ITEMS.forEach(function(it){
+            var s = (it.id in SCORES) ? SCORES[it.id] : (window[it.id + 'Score'] || 0);
+            scoresObj[it.id] = s;
+            total += (s||0);
+          });
+          var pid = (jsPsych && jsPsych.data && jsPsych.data.select) ? (jsPsych.data.get().select('participantId').values()[0] || jsPsych.data.getURLVariable('ParticipantID')) : (jsPsych && jsPsych.data ? jsPsych.data.getURLVariable('ParticipantID') : '');
+          var endpoint = window.KC_REMOTE_ENDPOINT || '';
+          var secret = window.KC_REMOTE_SECRET || '';
+          var payload = { participantId: pid, item_ids: ITEMS.map(function(it){ return it.id; }), scores: scoresObj, total: total };
+          if (!endpoint) {
+            console.warn('Silent submit: KC_REMOTE_ENDPOINT not set; skipping remote POST');
+            return;
+          }
+          try { showError('Submitting results to remote...'); } catch(e){}
+          postResultsToServer(endpoint, secret, payload).then(function(res){
+            try { showError('Submission finished.'); } catch(e){}
+          }).catch(function(err){
+            try { showError('Submission failed: ' + (err && err.message ? err.message : String(err))); } catch(e){}
+          });
+        } catch (e) { console.error('silent submit failed', e); }
+      }
+    };
+    timeline.push(silent_submit);
+
     // ...existing code...
 
     // ======= INIT =======
