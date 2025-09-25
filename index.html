@@ -697,12 +697,17 @@
     };
     timeline.push(place_items_trial);
 
-    // ======= SILENT SUBMIT =======
-    // After the placement trial finishes, send results silently to the remote collector
-    var silent_submit = {
+    // ======= SILENT SUBMIT (blocking) =======
+    // Start the POST in a call-function trial, then push a waiting trial that
+    // polls for completion. This blocks the timeline (and the enclosing iframe)
+    // until the POST resolves (or a timeout elapses), which is useful when
+    // embedding in Qualtrics so the survey doesn't advance before submission.
+    var start_post = {
       type: 'call-function',
       func: function() {
         try {
+          window.KC_SUBMIT_DONE = false;
+          window.KC_SUBMIT_ERROR = null;
           var scoresObj = {};
           var total = 0;
           ITEMS.forEach(function(it){
@@ -716,18 +721,50 @@
           var payload = { participantId: pid, item_ids: ITEMS.map(function(it){ return it.id; }), scores: scoresObj, total: total };
           if (!endpoint) {
             console.warn('Silent submit: KC_REMOTE_ENDPOINT not set; skipping remote POST');
+            window.KC_SUBMIT_DONE = true;
             return;
           }
           try { showError('Submitting results to remote...'); } catch(e){}
           postResultsToServer(endpoint, secret, payload).then(function(res){
+            window.KC_SUBMIT_DONE = true; window.KC_SUBMIT_ERROR = null; 
             try { showError('Submission finished.'); } catch(e){}
           }).catch(function(err){
-            try { showError('Submission failed: ' + (err && err.message ? err.message : String(err))); } catch(e){}
+            window.KC_SUBMIT_DONE = true; window.KC_SUBMIT_ERROR = (err && err.message) ? err.message : String(err);
+            try { showError('Submission failed: ' + window.KC_SUBMIT_ERROR); } catch(e){}
           });
-        } catch (e) { console.error('silent submit failed', e); }
+        } catch (e) { console.error('start_post failed', e); window.KC_SUBMIT_DONE = true; window.KC_SUBMIT_ERROR = e && e.message ? e.message : String(e); }
       }
     };
-    timeline.push(silent_submit);
+    timeline.push(start_post);
+
+    var wait_for_submit = {
+      type: 'html-keyboard-response',
+      stimulus: '<div style="max-width:820px"><h3>Submitting results — please wait.</h3><p>Please do not close this window.</p></div>',
+      choices: [],
+      on_load: function() {
+        try {
+          var start = Date.now();
+          var timeout = 20000; // ms
+          var iv = setInterval(function(){
+            try {
+              if (window.KC_SUBMIT_DONE) {
+                clearInterval(iv);
+                // if there was an error, keep the message visible via showError
+                setTimeout(function(){ try { jsPsych.finishTrial(); } catch(e){ console.error('finishTrial failed', e); } }, 200);
+                return;
+              }
+              if (Date.now() - start > timeout) {
+                clearInterval(iv);
+                try { showError('Submission timed out after ' + (timeout/1000) + 's — continuing.'); } catch(e){}
+                try { jsPsych.finishTrial(); } catch(e){ console.error('finishTrial after timeout failed', e); }
+                return;
+              }
+            } catch (e) { console.error('wait_for_submit interval error', e); }
+          }, 200);
+        } catch (e) { console.error('wait_for_submit on_load error', e); }
+      }
+    };
+    timeline.push(wait_for_submit);
 
     // ...existing code...
 
