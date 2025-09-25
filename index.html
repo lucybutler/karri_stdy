@@ -55,10 +55,14 @@
       .swatch { width:16px; height:16px; border-radius:50%; display:inline-block; }
 
       /* Draggables that live on the board */
-  .item { position:absolute; width:110px; height:110px; border-radius:14px; background:transparent; display:flex; align-items:center; justify-content:center; cursor:grab; user-select:none; }
-      .item.dragging { opacity:.85; cursor:grabbing; }
-  .item img { width:100%; height:100%; object-fit:contain; border-radius:12px; border:0; outline:0; }
-  .item { z-index:200000; }
+      .item { position:absolute; width:110px; height:110px; border-radius:14px; background:transparent; display:flex; align-items:center; justify-content:center; cursor:grab; user-select:none; }
+        .item.dragging { opacity:.85; cursor:grabbing; }
+      .item img { width:100%; height:100%; object-fit:contain; border-radius:12px; border:0; outline:0; }
+      /* bring placed items above rings and other page content */
+      .item { z-index:300000; }
+      /* ensure tiles themselves are positioned so label z-index works */
+      .tile { position: relative; z-index:300001; }
+      .tile-label { position: absolute; left: 6px; right: 6px; bottom: 6px; text-align: center; pointer-events: none; z-index: 300002; font-size: 18px; font-weight:700; color: #000; background: rgba(255,255,255,0.85); border-radius:6px; padding:4px 6px; }
 
   /* tooltip bubble */
   .kc-tooltip { position:fixed; pointer-events:none; background:rgba(0,0,0,0.85); color:#fff; padding:6px 8px; border-radius:6px; font-size:13px; z-index:100000; transform:translate(8px,8px); }
@@ -323,8 +327,11 @@
         if (it.img) {
           var im = document.createElement('img');
           im.src = it.img; im.alt = it.label; im.draggable = false; t.appendChild(im);
+          // if there is also a label, show it as a small overlay label
+          var lbl = document.createElement('div'); lbl.className = 'tile-label'; lbl.textContent = it.label; t.appendChild(lbl);
         } else {
-          t.textContent = it.label;
+          // text-only tiles: wrap label in a span so we can control z-index and styling
+          var lbl = document.createElement('div'); lbl.className = 'tile-label'; lbl.textContent = it.label; t.appendChild(lbl);
         }
         t.style.touchAction = 'none';
 
