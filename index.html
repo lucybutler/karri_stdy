@@ -872,16 +872,19 @@
           // suppress visible status box during iframe/Qualtrics submission
           window.KC_SUPPRESS_SHOWERROR = true;
           console.log('Submitting results to remote...');
+          // record submit start time for timing/debug
+          window.KC_SUBMIT_START = Date.now();
           postResultsToServer(endpoint, secret, payload).then(function(res){
             window.KC_SUBMIT_DONE = true; window.KC_SUBMIT_ERROR = null; 
             window.KC_SUPPRESS_SHOWERROR = false;
             console.log('Submission finished.');
-            // notify parent (Qualtrics iframe) that submission completed
+            // notify parent (Qualtrics iframe) that submission completed (kc_submit)
             try {
               if (window.parent && window.parent !== window) {
                 window.parent.postMessage({ kc_submit: true, participantId: pid, result: res }, '*');
-                // Also send a 'gamecomplete' message so Qualtrics can hide/disable its "Next" button
-                window.parent.postMessage({ type: 'gamecomplete', participantId: pid, timing_ms: 3000 }, '*');
+                // Do NOT auto-send 'gamecomplete' here. The parent will be informed
+                // that submission succeeded via kc_submit; the user must click the
+                // final "Complete" button to send the definitive 'gamecomplete'.
                 window.KC_POSTED_TO_PARENT = true;
               }
             } catch (e) { console.error('postMessage to parent failed', e); }
@@ -889,13 +892,10 @@
             window.KC_SUBMIT_DONE = true; window.KC_SUBMIT_ERROR = (err && err.message) ? err.message : String(err);
             window.KC_SUPPRESS_SHOWERROR = false;
             console.error('Submission failed: ' + window.KC_SUBMIT_ERROR);
-            // still attempt to notify parent of failure
+            // notify parent of failure (kc_submit false) but do not send 'gamecomplete'
             try {
               if (window.parent && window.parent !== window) {
                 window.parent.postMessage({ kc_submit: false, participantId: pid, error: window.KC_SUBMIT_ERROR }, '*');
-                // Inform parent that game is complete (but errored); parent can choose
-                // to reveal its Next button after a delay or show an error UI.
-                window.parent.postMessage({ type: 'gamecomplete', participantId: pid, timing_ms: 3000, error: window.KC_SUBMIT_ERROR }, '*');
                 window.KC_POSTED_TO_PARENT = true;
               }
             } catch (e) { console.error('postMessage to parent failed', e); }
@@ -934,6 +934,19 @@
               }
             } catch (e) { console.error('wait_for_submit interval error', e); }
           }, 200);
+          // Move the local audio element (if present) to document.body so it
+          // survives the jsPsych trial DOM swap and does not restart when the
+          // final_thanks trial is shown.
+          try {
+            var localAudio = document.querySelector('#jspsych-target audio.qmedia');
+            if (localAudio && !document.getElementById('kc-global-audio')) {
+              // Give it a stable id/class and move it to body
+              localAudio.id = 'kc-global-audio';
+              localAudio.classList.add('kc-global-audio');
+              // keep controls visible but move out of the jsPsych content container
+              document.body.appendChild(localAudio);
+            }
+          } catch (e) { console.error('moving global audio failed', e); }
         } catch (e) { console.error('wait_for_submit on_load error', e); }
       }
     };
@@ -945,11 +958,14 @@
       stimulus: function() {
         return '' +
           '<div>' +
-            '<audio width="320" preload="auto" height="40" controls="true" class="qmedia" autoplay="true">' +
+            // Only create a local audio element in the final screen if a
+            // persistent global audio element is not present (so audio doesn't
+            // restart when DOM swaps between trials).
+            (document.getElementById('kc-global-audio') ? '' : ('<audio width="320" preload="auto" height="40" controls="true" class="qmedia" autoplay="true">' +
               '<source type="audio/mp3" src="mp3/complete.mp3">' +
-            '</audio>' +
+            '</audio>')) +
             '<div style="margin-top:12px;font-weight:600;">Hooray! You\'ve finished the activity!</div>' +
-            '<div>Well done!</div>' +
+            '<div id="kc-final-actions" style="margin-top:12px;"></div>' +
           '</div>';
       },
       choices: [],
@@ -963,6 +979,56 @@
               window.KC_POSTED_READY = true;
             }
           } catch (e) { console.error('postMessage to parent (ready) failed', e); }
+
+          // Poll for submission completion. When successfully saved (done && no error)
+          // create and insert the Complete button so it exists only after the save.
+          var actionsEl = document.getElementById('kc-final-actions');
+          var check = setInterval(function(){
+            try {
+              if (window.KC_SUBMIT_DONE) {
+                clearInterval(check);
+                // only create the Complete button when submission succeeded
+                if (!window.KC_SUBMIT_ERROR) {
+                  try {
+                    if (!actionsEl) return;
+                    // create a real button element (type=button) so it's clickable
+                    var completeBtn = document.createElement('button');
+                    completeBtn.type = 'button';
+                    completeBtn.id = 'kc-complete-btn';
+                    completeBtn.className = 'jspsych-btn kc-continue-btn';
+                    completeBtn.textContent = 'Complete';
+                    // click handler sends gamecomplete and finishes trial
+                    completeBtn.addEventListener('click', function(){
+                      try {
+                        var timing = (window.KC_SUBMIT_START && window.KC_SUBMIT_DONE) ? (Date.now() - window.KC_SUBMIT_START) : null;
+                        if (window.parent && window.parent !== window) {
+                          window.parent.postMessage({ type: 'gamecomplete', participantId: pid, timing_ms: timing }, '*');
+                          window.KC_POSTED_GAMECOMPLETE = true;
+                        }
+                      } catch (e) { console.error('failed to post gamecomplete', e); }
+                      try { jsPsych.finishTrial(); } catch (e) { console.error('finishTrial failed after complete click', e); }
+                      // Navigate to a blank page so the iframe presents an empty page
+                      // after the participant confirms completion. This happens after
+                      // the postMessage has been sent.
+                      try { window.location.href = 'about:blank'; } catch (e) { console.error('navigation to about:blank failed', e); }
+                    });
+                    actionsEl.appendChild(completeBtn);
+                  } catch (e) { console.error('creating complete button failed', e); }
+                } else {
+                  // submission failed; show an inline message to the participant
+                  try {
+                    if (actionsEl) {
+                      var msg = document.createElement('div');
+                      msg.style.color = '#c21f1f';
+                      msg.textContent = 'Submission failed — please contact the researcher.';
+                      actionsEl.appendChild(msg);
+                    }
+                  } catch (e) { console.error('showing error message failed', e); }
+                }
+                return;
+              }
+            } catch (e) { console.error('final_thanks submit-poll error', e); }
+          }, 200);
         } catch (e) { console.error('final_thanks on_load failed', e); }
       }
     };
