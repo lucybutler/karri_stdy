@@ -596,9 +596,13 @@
       try {
         var body = Object.assign({}, payload);
         if (secretToken) body.secret = secretToken;
+        // Use text/plain content-type to avoid a CORS preflight OPTIONS request.
+        // Browsers only send a simple (non-preflighted) POST when Content-Type is
+        // one of: application/x-www-form-urlencoded, multipart/form-data or text/plain.
+        // Apps Script will still receive the raw JSON in e.postData.contents.
         fetch(endpointUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify(body)
         }).then(function(resp){
           if (!resp.ok) throw new Error('HTTP ' + resp.status);
