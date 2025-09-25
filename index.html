@@ -62,10 +62,10 @@
       .item { z-index:300000; }
       /* ensure tiles themselves are positioned so label z-index works */
       .tile { position: relative; z-index:300001; }
-      .tile-label { position: absolute; left: 6px; right: 6px; bottom: 6px; text-align: center; pointer-events: none; z-index: 300002; font-size: 18px; font-weight:700; color: #000; background: rgba(255,255,255,0.85); border-radius:6px; padding:4px 6px; }
 
-  /* tooltip bubble */
-  .kc-tooltip { position:fixed; pointer-events:none; background:rgba(0,0,0,0.85); color:#fff; padding:6px 8px; border-radius:6px; font-size:13px; z-index:100000; transform:translate(8px,8px); }
+  /* tooltip bubble - force it above everything to avoid stacking-context issues */
+  /* Keep critical positioning and stacking as !important, but allow JS to control size/padding */
+  .kc-tooltip { position:fixed !important; pointer-events:none !important; background:rgba(0,0,0,0.85); color:#fff; padding:6px 8px; border-radius:6px; z-index:2147483647 !important; transform:translate(8px,8px); will-change: transform; }
 
   /* placeholder to keep start tile positions stable when items are picked up */
   .tile-placeholder { width:110px; height:110px; display:inline-block; vertical-align:top; border-radius:14px; background:transparent; }
@@ -327,11 +327,9 @@
         if (it.img) {
           var im = document.createElement('img');
           im.src = it.img; im.alt = it.label; im.draggable = false; t.appendChild(im);
-          // if there is also a label, show it as a small overlay label
-          var lbl = document.createElement('div'); lbl.className = 'tile-label'; lbl.textContent = it.label; t.appendChild(lbl);
         } else {
-          // text-only tiles: wrap label in a span so we can control z-index and styling
-          var lbl = document.createElement('div'); lbl.className = 'tile-label'; lbl.textContent = it.label; t.appendChild(lbl);
+          // text-only tiles: show label as plain text inside the tile
+          t.textContent = it.label;
         }
         t.style.touchAction = 'none';
 
@@ -348,16 +346,19 @@
     var kc_tooltip = null;
     function ensureTooltip(){
       if (kc_tooltip) return kc_tooltip;
-      kc_tooltip = document.createElement('div'); kc_tooltip.className = 'kc-tooltip'; kc_tooltip.style.display = 'none';
-      // ensure the tooltip is large and readable even if CSS is overridden
-      kc_tooltip.style.fontSize = '22px';
-      kc_tooltip.style.padding = '10px 12px';
-      kc_tooltip.style.lineHeight = '1.2';
-      kc_tooltip.style.borderRadius = '8px';
-      kc_tooltip.style.background = 'rgba(0,0,0,0.85)';
-      kc_tooltip.style.color = '#fff';
-      kc_tooltip.style.zIndex = 100000;
-      document.body.appendChild(kc_tooltip);
+  kc_tooltip = document.createElement('div'); kc_tooltip.className = 'kc-tooltip'; kc_tooltip.style.display = 'none';
+  // enforce critical inline styles so stacking contexts can't hide the tooltip
+  kc_tooltip.style.position = 'fixed';
+  kc_tooltip.style.pointerEvents = 'none';
+  kc_tooltip.style.zIndex = '2147483647';
+  kc_tooltip.style.fontSize = '22px';
+  kc_tooltip.style.padding = '10px 12px';
+  kc_tooltip.style.lineHeight = '1.2';
+  kc_tooltip.style.borderRadius = '8px';
+  kc_tooltip.style.background = 'rgba(0,0,0,0.85)';
+  kc_tooltip.style.color = '#fff';
+  kc_tooltip.style.willChange = 'transform';
+  document.body.appendChild(kc_tooltip);
       return kc_tooltip;
     }
     function showTooltip(text, x, y){
