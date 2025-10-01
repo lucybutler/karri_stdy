@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="jspsych-6.1.0/css/jspsych.css">
 
     <style>
-  :root { --size: 820px; --white-margin: 200px; --red-diameter: calc(var(--size) - var(--white-margin)); --band: calc(var(--red-diameter) / 6); --orange-band: var(--band); --green-band: var(--band); }
+  :root { --size: 920px; --white-margin: 240px; --red-diameter: calc(var(--size) - var(--white-margin)); --band: calc(var(--red-diameter) / 6); --orange-band: calc(var(--band) * 0.8); --green-band: calc(var(--band) * 0.8); }
     html, body { background:#fff; color:#000; margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
       #jspsych-target { display:grid; place-items:center; min-height:100vh; }
 
@@ -21,7 +21,6 @@
     .board { position:relative; width:var(--size); height:var(--size); background:#fff; border-radius:50%; display:grid; place-items:center; overflow:visible; }
   .ring { position:absolute; border-radius:50%; left:50%; top:50%; transform:translate(-50%,-50%); }
   .ring.red    { background:#c21f1f; width:var(--red-diameter); height:var(--red-diameter); z-index:1; }
-  .ring.orange { background:#ff7a21; width:calc(var(--red-diameter) - (2 * var(--orange-band))); height:calc(var(--red-diameter) - (2 * var(--orange-band))); }
   .ring.orange { background:#ff7a21; width:calc(var(--red-diameter) - (2 * var(--orange-band))); height:calc(var(--red-diameter) - (2 * var(--orange-band))); z-index:1; }
   .ring.green  { background:#1aaa1a; width:calc(var(--red-diameter) - (2 * var(--orange-band)) - (2 * var(--green-band))); height:calc(var(--red-diameter) - (2 * var(--orange-band)) - (2 * var(--green-band))); z-index:1; }
   .center { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:calc(var(--red-diameter) - (6 * var(--band))); height:calc(var(--red-diameter) - (6 * var(--band))); border-radius:50%; background:var(--board-bg, #fff); z-index:1; }
@@ -35,19 +34,17 @@
       .start-strip { width:220px; }
       .start-strip h3 { margin:.2rem 0 .6rem; font-weight:600; }
   .tiles { display:flex; flex-wrap:wrap; gap:8px; max-height:calc(var(--size) - 20px); overflow:auto; }
-  .tile { width:110px; height:110px; border-radius:14px; background:transparent; display:flex; align-items:center; justify-content:center; }
+  .tile { width:100px; height:100px; border-radius:14px; background:transparent; display:flex; align-items:center; justify-content:center; }
   .tile { cursor:grab; touch-action:none; }
   .tile img { width:100%; height:100%; object-fit:contain; border-radius:12px; pointer-events:none; border:0; outline:0; }
   .ring { pointer-events:none; }
   /* larger text for item labels (when images are not used) */
   .tile { font-size: 26px; font-weight:700; }
   /* make tooltip text bigger for readability */
-  .kc-tooltip { font-size: 18px; padding:8px 10px; }
   /* increase legend font-size slightly */
   .legend { font-size: 1.2rem; }
   /* We use the mouse-following tooltip (kc-tooltip) instead of CSS overlays */
   /* Make the mouse-following tooltip larger and more readable */
-  .kc-tooltip { font-size: 20px; padding:10px 12px; }
   .ring.active { filter: brightness(1.25); box-shadow: 0 0 18px rgba(0,0,0,0.25) inset; }
 
       .legend { font-size:.9rem; opacity:.85; line-height:1.4; margin-top:.75rem; }
@@ -55,7 +52,7 @@
       .swatch { width:16px; height:16px; border-radius:50%; display:inline-block; }
 
       /* Draggables that live on the board */
-      .item { position:absolute; width:110px; height:110px; border-radius:14px; background:transparent; display:flex; align-items:center; justify-content:center; cursor:grab; user-select:none; }
+      .item { position:absolute; width:130px; height:130px; border-radius:14px; background:transparent; display:flex; align-items:center; justify-content:center; cursor:grab; user-select:none; }
         .item.dragging { opacity:.85; cursor:grabbing; }
       .item img { width:100%; height:100%; object-fit:contain; border-radius:12px; border:0; outline:0; }
       /* bring placed items above rings and other page content */
@@ -68,24 +65,46 @@
   .kc-tooltip { position:fixed !important; pointer-events:none !important; background:rgba(0,0,0,0.85); color:#fff; padding:6px 8px; border-radius:6px; z-index:2147483647 !important; transform:translate(8px,8px); will-change: transform; }
 
   /* placeholder to keep start tile positions stable when items are picked up */
-  .tile-placeholder { width:110px; height:110px; display:inline-block; vertical-align:top; border-radius:14px; background:transparent; }
+  .tile-placeholder { width:130px; height:130px; display:inline-block; vertical-align:top; border-radius:14px; background:transparent; }
 
       /* Make the default jsPsych button green */
       .jspsych-btn { background:#28a745; color:#fff; border-radius:8px; border: none; padding: 12px 18px; font-size:18px; min-width:140px; cursor:pointer; }
   .jspsych-content { color:#000; }
       /* special green continue button used on final screen */
       .kc-continue-btn { background: #28a745 !important; color: #fff !important; border: none; }
+    /* accessible visually-hidden helper */
+    .sr-only { position: absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    /* flag icon sizing inside the button */
+    .kc-flag-svg { width:40px; height:40px; display:inline-block; vertical-align:middle; }
+    /* Make the flag button appear 'bare' (no background rectangle or border)
+       but keep it keyboard-focusable with an accessible focus ring. */
+    .jspsych-btn.flag-btn {
+      background: transparent !important;
+      border: none !important;
+      padding: 6px !important;
+      min-width: 0 !important;
+      box-shadow: none !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      border-radius: 6px !important;
+    }
+    .jspsych-btn.flag-btn:focus {
+      outline: none !important;
+      box-shadow: 0 0 0 4px rgba(40,167,69,0.18) !important;
+      border-radius: 6px !important;
+    }
+    .jspsych-btn.flag-btn:hover { transform: translateY(-1px); }
+    /* plain replay icon (no button rectangle) */
+    /* replay icon styles removed — using native audio controls */
     </style>
   </head>
   <body>
     <!-- Configure remote collector: set these values after deploying your Apps Script web app -->
     <script>
-      // Replace the endpoint below with your deployed Apps Script Web App URL (or other collector)
-      // Example: 'https://script.google.com/macros/s/AKfycbx.../exec'
+// URL for Google Apps Script web app that collects results
       window.KC_REMOTE_ENDPOINT = window.KC_REMOTE_ENDPOINT || 'https://script.google.com/macros/s/AKfycby3wMsgKERI28rn8mVR6vtZCKie7GLllEnsR2pI3xhgJ2LdKfD6SRqsBeG71OV3nStw/exec';
 
-      // Replace with the shared secret you set in the Apps Script EXPECTED_SECRET.
-      // WARNING: putting the secret here makes it public in the site source. Use only as a light anti-spam.
       window.KC_REMOTE_SECRET = window.KC_REMOTE_SECRET || 'TESTER';
     </script>
 
@@ -116,7 +135,7 @@
 
     // Must mirror CSS custom properties
   var BOARD_SIZE   = 820;  // px (diameter)
-    var WHITE_MARGIN = 200;   // outer white band width (px)
+    var WHITE_MARGIN = 240;   // outer white band width (px)
     // per-item scores (initialized to 0)
     var SCORES = {};
     ITEMS.forEach(function(it){ SCORES[it.id] = 0; });
@@ -249,14 +268,14 @@
           help.style.top  = Math.round(top) + 'px';
         }
         if (help && audio) {
-          // ensure click plays the correct audio; fall back to Audio API on failure
-          help.addEventListener('click', function(){
-            try {
-              var p = audio.play();
-              if (p && p.then) p.catch(function(){ try { new Audio(audio.querySelector('source').src).play(); } catch(e){} });
-            } catch (e) { try { new Audio(audio.querySelector('source').src).play(); } catch(e){} }
-          });
-        }
+            // ensure click plays the correct audio; fall back to Audio API on failure
+            help.addEventListener('click', function(){
+              try {
+                var p = audio.play();
+                if (p && p.then) p.catch(function(){ try { new Audio(audio.querySelector('source').src).play(); } catch(e){} });
+              } catch (e) { try { new Audio(audio.querySelector('source').src).play(); } catch(e){} }
+            });
+          }
       } catch (e) { console.error('setupRingHelpControl failed for', helpId, e); }
     }
 
@@ -777,14 +796,65 @@
       type: 'html-button-response',
       stimulus:
         '<div style="max-width:820px">' +
-          '<h2>In this game you will XXX</h2>' +
-          '<audio id="kc-welcome-audio" preload="auto" controls="true" autoplay="true" style="width:100%;margin-top:8px">' +
-            '<source type="audio/mp3" src="mp3/welcome.mp3">' +
+          '<h2>Welcome to the circles game!</h2>' +
+          // show the instructions image while the audio plays
+          '<img src="img/instructions_page.png" alt="Instructions" style="width:100%;height:auto;margin-top:8px;border-radius:8px" />' +
+          // Render the native audio element with browser-provided controls so a
+          // visible progress bar and seeking UI are available to participants.
+          '<audio id="kc-welcome-audio" preload="auto" controls style="width:100%;margin-top:8px;display:block">' +
+            '<source type="audio/mp3" src="mp3/Circles_game_instructions.mp3">' +
             'Your browser does not support the audio element.' +
           '</audio>' +
-          '<p style="margin-top:12px">When you’re ready, click Continue.</p>' +
+          '<div id="kc-instr-status" style="margin-top:12px;font-weight:600;">Please play and listen to the audio — the green flag will appear when it finishes.</div>' +
         '</div>',
-      choices: ['I am ready!']
+  // use a flag SVG inside the button for visual affordance; keep a sr-only label for accessibility
+  // %choice% will be replaced by jsPsych with the choices array entry (screen-reader text)
+  button_html: '<button class="jspsych-btn flag-btn"><span class="sr-only">%choice%</span><svg class="kc-flag-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#ffffff" d="M0 0h24v24H0z" fill="none"/><path fill="#28a745" d="M4 3h2v18H4zM6 3c4 0 4 2 8 2s4-2 8-2v9c-4 0-4 2-8 2s-4-2-8-2V3z"/></svg></button>',
+  choices: ['I am ready!'],
+          on_load: function() {
+        try {
+          // The jspsych button element is created from button_html; target it and hide until audio ends
+          var btn = document.querySelector('#jspsych-target .jspsych-btn.flag-btn');
+          var statusEl = document.getElementById('kc-instr-status');
+          if (btn) {
+            btn.style.display = 'none';
+            btn.disabled = true;
+          }
+          var audio = document.getElementById('kc-welcome-audio');
+          var revealed = false;
+          function reveal() {
+            if (revealed) return; revealed = true;
+            try { if (btn) { btn.style.display = ''; btn.disabled = false; } if (statusEl) statusEl.textContent = 'When you are ready to continue, click the green flag.'; } catch(e){}
+          }
+          if (audio) {
+            // If audio has already ended (cached), reveal immediately
+            if (audio.ended) { reveal(); return; }
+            // Update status when playback starts
+            audio.addEventListener('play', function(){ try { if (statusEl) statusEl.textContent = 'Listening to instructions...'; } catch(e){} });
+            // Only reveal when audio finishes
+            audio.addEventListener('ended', function(){ reveal(); });
+            // If autoplay is blocked, let the status prompt the participant to press play
+            try {
+              if (audio.paused) {
+                if (statusEl) statusEl.textContent = 'Press play to hear instructions.';
+              }
+            } catch(e){}
+
+            // Attach audio-blocking listeners so dragging is disabled while instructions play
+            try {
+              // Set / clear global flag so enableDrag can block pointerdown
+              if (!window.KC_AUDIO_PLAYING) window.KC_AUDIO_PLAYING = false;
+              audio.addEventListener('play', function(){ try { window.KC_AUDIO_PLAYING = true; } catch(e){} });
+              audio.addEventListener('playing', function(){ try { window.KC_AUDIO_PLAYING = true; } catch(e){} });
+              audio.addEventListener('pause', function(){ try { window.KC_AUDIO_PLAYING = false; } catch(e){} });
+              audio.addEventListener('ended', function(){ try { window.KC_AUDIO_PLAYING = false; } catch(e){} });
+            } catch (e) { console.error('attaching audio blocking listeners failed', e); }
+          } else {
+            // No audio element found — leave the flag hidden and inform participant
+            if (statusEl) statusEl.textContent = 'Audio not available — please contact the researcher.';
+          }
+        } catch (e) { console.error('instructions on_load failed', e); }
+      }
     };
     timeline.push(instructions);
 
@@ -907,11 +977,12 @@
 
     var wait_for_submit = {
       type: 'html-keyboard-response',
-      stimulus: '<div style="max-width:820px">' +
+      stimulus: '<div style="max-width:820px;text-align:center">' +
                  '<audio width="320" preload="auto" height="40" controls="true" class="qmedia" autoplay="true">' +
                    '<source type="audio/mp3" src="mp3/complete.mp3">' +
                  '</audio>' +
-                 '<div style="margin-top:12px;font-weight:600;">Hooray! You\'ve finished the activity!</div>' +
+                 '<div style="margin-top:16px;font-weight:700;font-size:1.5rem;">Hooray! You have finished the activity!</div>' +
+                 '<div style="margin-top:8px;font-size:1rem;opacity:0.95;">Your choices are being saved. A Continue button will appear when your choices have been saved.</div>' +
                '</div>',
       choices: [],
       on_load: function() {
@@ -964,7 +1035,7 @@
             (document.getElementById('kc-global-audio') ? '' : ('<audio width="320" preload="auto" height="40" controls="true" class="qmedia" autoplay="true">' +
               '<source type="audio/mp3" src="mp3/complete.mp3">' +
             '</audio>')) +
-            '<div style="margin-top:12px;font-weight:600;">Hooray! You\'ve finished the activity!</div>' +
+                 '<div style="margin-top:16px;font-weight:700;font-size:1.5rem;">Hooray! You have finished the activity!</div>' +
             '<div id="kc-final-actions" style="margin-top:12px;"></div>' +
           '</div>';
       },
@@ -996,7 +1067,7 @@
                     completeBtn.type = 'button';
                     completeBtn.id = 'kc-complete-btn';
                     completeBtn.className = 'jspsych-btn kc-continue-btn';
-                    completeBtn.textContent = 'Complete';
+                    completeBtn.textContent = 'Continue';
                     // click handler sends gamecomplete and finishes trial
                     completeBtn.addEventListener('click', function(){
                       try {
